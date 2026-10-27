@@ -329,6 +329,180 @@ def test_rostering_adopts_bootstrap_account():
     assert len(accounts) == 1 and accounts[0].external_ref == "g_it"   # adopté, pas de doublon
 
 
+def _foreign_accounts(s):
+    """Comptes HORS tenant : un prof d'un autre tenant + un super_admin vendor (sans org)."""
+    other = Organization(name="Other", domain="other.edu"); s.add(other); s.flush()
+    victim = AppUser(email="victim@other.edu", external_ref="o_victim")
+    sa = AppUser(email="root@vendor.io", is_active=False)   # offboardé
+    s.add_all([victim, sa]); s.flush()
+    s.add(Membership(user_id=victim.id, role=Role.TEACHER, organization_id=other.id))
+    s.add(Membership(user_id=sa.id, role=Role.SUPER_ADMIN))
+    s.commit()
+    return victim, sa
+
+
+def _snap_one(ext_id, email):
+    return DirectorySnapshot([DirOrgUnit("ou_elem", "Elementary")],
+                             [DirUser(ext_id, email, "X", "ou_elem")], [], [])
+
+
+def _teacher(u, ou_by_id):
+    return Role.TEACHER
+
+
+def test_sync_never_adopts_foreign_or_vendor_account():
+    """Une sync ne réécrit JAMAIS un compte d'un autre tenant / vendor, ni ne lui ajoute de rôle."""
+    s, org = _setup()
+    victim, sa = _foreign_accounts(s)
+    for i, target in enumerate((victim, sa)):
+        before = (target.email, target.external_ref, target.is_active, target.deleted_at)
+        n_memberships = len(s.execute(select(Membership).where(Membership.user_id == target.id)).all())
+        # 1) email de la victime (+ id réutilisé de la victime), 2) même id avec un nouvel email
+        atk = f"atk_{i}"
+        for snap in (_snap_one(atk, target.email), _snap_one("o_victim", target.email),
+                     _snap_one(atk, f"attacker{i}@school.edu")):
+            run = sync_directory(s, org, snap, classifier=_teacher, now=NOW); s.commit()
+            s.refresh(target)
+            assert (target.email, target.external_ref, target.is_active, target.deleted_at) == before
+            assert len(s.execute(select(Membership).where(Membership.user_id == target.id)
+                                 ).all()) == n_memberships
+        assert run.error_count == 0  # le dernier snapshot crée simplement un compte local
+    assert victim.email == "victim@other.edu" and sa.email == "root@vendor.io"
+
+
+def test_foreign_match_is_reported_as_error():
+    s, org = _setup()
+    victim, _ = _foreign_accounts(s)
+    run = sync_directory(s, org, _snap_one("atk_1", victim.email), classifier=_teacher, now=NOW)
+    assert run.error_count == 1 and run.status == "error"
+
+
+def test_guardian_never_adopts_foreign_account():
+    s, org = _setup()
+    victim, sa = _foreign_accounts(s)
+    snap = _with_guardians([DirGuardian("u_alice", victim.email, "V", "grd1"),
+                            DirGuardian("u_bob", sa.email, "S", "grd2")])
+    run = sync_directory(s, org, snap, classifier=_classifier, now=NOW); s.commit()
+    s.refresh(victim); s.refresh(sa)
+    assert run.error_count == 2
+    assert victim.external_ref == "o_victim" and sa.external_ref is None and sa.is_active is False
+    assert s.execute(select(ParentStudent)).scalars().all() == []
+    assert Role.PARENT not in build_user_context(s, victim.id).roles
+
+
+def test_email_fallback_requires_org_domain():
+    """Repli email réservé au domaine vérifié du tenant : hors domaine → erreur, compte intact."""
+    s, org = _setup()
+    off = AppUser(email="it@elsewhere.io"); s.add(off); s.flush()
+    s.add(Membership(user_id=off.id, role=Role.IT_ADMIN, organization_id=org.id)); s.commit()
+    run = sync_directory(s, org, _snap_one("atk_1", "it@elsewhere.io"), classifier=_teacher, now=NOW)
+    s.commit(); s.refresh(off)
+    assert run.error_count == 1 and off.external_ref is None
+
+
+def test_shared_account_leaving_org_loses_org_access_only():
+    """Compte partagé (prof ici, parent ailleurs) : présent → pas retiré ; absent → accès `org`
+    retiré (membership, classes) sans toucher l'AppUser global ni l'autre tenant."""
+    s, org = _setup()
+    sync_directory(s, org, _base_snapshot(), classifier=_classifier, now=NOW); s.commit()
+    carol = s.execute(select(AppUser).where(AppUser.email == "carol@school.edu")).scalar_one()
+    other = Organization(name="Other", domain="other.edu"); s.add(other); s.flush()
+    s.add(Membership(user_id=carol.id, role=Role.PARENT, organization_id=other.id)); s.commit()
+
+    run = sync_directory(s, org, _base_snapshot(), classifier=_classifier, now=NOW); s.commit()
+    assert run.error_count == 1                       # signalé, compte non réécrit…
+    assert s.execute(select(Membership).where(Membership.user_id == carol.id,
+                                              Membership.organization_id == org.id)).first()
+    assert s.execute(select(TeacherClassroom).where(TeacherClassroom.user_id == carol.id)
+                     ).first() is not None            # …et ses classes dans `org` restent
+
+    b = _base_snapshot()
+    gone = DirectorySnapshot(b.org_units, [u for u in b.users if u.external_id != "u_carol"],
+                             b.groups, [m for m in b.memberships if m.user_external_id != "u_carol"])
+    sync_directory(s, org, gone, classifier=_classifier, now=NOW, force=True); s.commit()
+    s.refresh(carol)
+    assert carol.is_active and carol.deleted_at is None and carol.email == "carol@school.edu"
+    roles = [(m.role, m.organization_id) for m in
+             s.execute(select(Membership).where(Membership.user_id == carol.id)).scalars()]
+    assert roles == [(Role.PARENT, other.id)]
+    assert s.execute(select(TeacherClassroom).where(TeacherClassroom.user_id == carol.id)).first() is None
+
+
+def test_suspended_shared_account_loses_org_access():
+    """Compte partagé SUSPENDU dans l'annuaire : non réécrit, mais son accès à `org` est retiré."""
+    s, org = _setup()
+    sync_directory(s, org, _base_snapshot(), classifier=_classifier, now=NOW); s.commit()
+    carol = s.execute(select(AppUser).where(AppUser.email == "carol@school.edu")).scalar_one()
+    other = Organization(name="Other", domain="other.edu"); s.add(other); s.flush()
+    s.add(Membership(user_id=carol.id, role=Role.PARENT, organization_id=other.id)); s.commit()
+
+    b = _base_snapshot()
+    users = [DirUser(u.external_id, u.email, u.full_name, u.org_unit_external_id,
+                     suspended=(u.external_id == "u_carol")) for u in b.users]
+    sync_directory(s, org, DirectorySnapshot(b.org_units, users, b.groups, b.memberships),
+                   classifier=_classifier, now=NOW, force=True); s.commit()
+    s.refresh(carol)
+    assert carol.is_active and carol.deleted_at is None          # AppUser global intact
+    ctx = build_user_context(s, carol.id)
+    assert Role.TEACHER not in ctx.roles and org.id not in ctx.org_ids and not ctx.classroom_ids
+
+
+def _share_with_other_org(s, email, role=Role.PARENT):
+    au = s.execute(select(AppUser).where(AppUser.email == email)).scalar_one()
+    other = Organization(name="Other", domain="other.edu"); s.add(other); s.flush()
+    s.add(Membership(user_id=au.id, role=role, organization_id=other.id)); s.commit()
+    return au, other
+
+
+def test_shared_account_email_change_does_not_duplicate_identity():
+    s, org = _setup()
+    sync_directory(s, org, _base_snapshot(), classifier=_classifier_by_id, now=NOW); s.commit()
+    _share_with_other_org(s, "carol@school.edu")
+    b = _base_snapshot()
+    renamed = [DirUser("u_carol", "carol.new@school.edu", "Carol", "ou_elem")
+               if u.external_id == "u_carol" else u for u in b.users]
+    run = sync_directory(s, org, DirectorySnapshot(b.org_units, renamed, b.groups, b.memberships),
+                         classifier=_classifier_by_id, now=NOW); s.commit()
+    assert run.error_count == 1
+    assert len(s.execute(select(AppUser).where(AppUser.external_ref == "u_carol")).all()) == 1
+
+
+def test_shared_student_keeps_guardian_links_and_parent():
+    s, org = _setup()
+    snap = _with_guardians([DirGuardian("u_alice", "mom@home.com", "Mom", "grd1")])
+    sync_directory(s, org, snap, classifier=_classifier, now=NOW); s.commit()
+    _share_with_other_org(s, "alice@school.edu", Role.STUDENT)
+    sync_directory(s, org, snap, classifier=_classifier, now=NOW); s.commit()
+    mom = s.execute(select(AppUser).where(AppUser.email == "mom@home.com")).scalar_one()
+    assert mom.is_active and mom.deleted_at is None
+    assert s.get(ParentStudent, (mom.id, _student_of(s, "alice@school.edu").id)) is not None
+
+
+def test_detached_shared_parent_loses_child_links():
+    s, org = _setup()
+    sync_directory(s, org, _with_guardians([DirGuardian("u_alice", "mom@home.com", "Mom", "grd1")]),
+                   classifier=_classifier, now=NOW); s.commit()
+    mom, _ = _share_with_other_org(s, "mom@home.com")
+    sync_directory(s, org, _with_guardians([]), classifier=_classifier, now=NOW, force=True); s.commit()
+    assert mom.is_active and not build_user_context(s, mom.id).child_student_ids
+
+
+def test_suspended_shared_manual_account_loses_org_access():
+    """Compte manuel (sans external_ref) partagé avec un autre tenant et SUSPENDU dans l'annuaire :
+    il échappe à `org_users` mais doit quand même perdre son accès à `org`."""
+    s, org = _setup()
+    t = AppUser(email="t@school.edu"); s.add(t); s.flush()
+    other = Organization(name="Other", domain="other.edu"); s.add(other); s.flush()
+    s.add_all([Membership(user_id=t.id, role=Role.TEACHER, organization_id=org.id),
+               Membership(user_id=t.id, role=Role.PARENT, organization_id=other.id)]); s.commit()
+    snap = DirectorySnapshot([DirOrgUnit("ou_elem", "Elementary")],
+                             [DirUser("g_t", "t@school.edu", "T", "ou_elem", suspended=True)], [], [])
+    sync_directory(s, org, snap, classifier=_teacher, now=NOW, force=True); s.commit()
+    s.refresh(t)
+    assert t.is_active and t.external_ref is None                 # AppUser global intact
+    assert org.id not in build_user_context(s, t.id).org_ids
+
+
 def _active_students(s):
     return s.execute(select(func.count()).select_from(Student)
                      .where(Student.deleted_at.is_(None))).scalar()

@@ -14,9 +14,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from src.models.base import Role, ensure_utc, utcnow
@@ -51,6 +51,48 @@ class SyncResult:
     def summary(self) -> str:
         return (f"{self.created} créés, {self.updated} màj, "
                 f"{self.deactivated} désactivés, {self.errors} erreurs")
+
+
+_VENDOR_ROLES = (Role.SUPER_ADMIN, Role.LINGUIST)
+
+
+def _ownership(s: Session, user: AppUser, org: Organization) -> str:
+    """"owned" : compte modifiable par la sync de `org` (au moins une membership, TOUTES
+    rattachées à `org` directement ou via l'école, aucune hors tenant ni vendor : super_admin,
+    linguiste). "shared" : lié à `org` mais aussi ailleurs / vendor. "foreign" : aucun lien.
+    `AppUser` est global : sans ce contrôle, un annuaire réécrirait le compte d'un autre tenant."""
+    rows = s.execute(
+        select(Membership.role, Membership.organization_id, School.organization_id)
+        .outerjoin(School, Membership.school_id == School.id)
+        .where(Membership.user_id == user.id)
+    ).all()
+    if rows and all(
+        role not in _VENDOR_ROLES and m_org in (None, org.id) and sc_org in (None, org.id)
+        and (m_org or sc_org) is not None
+        for (role, m_org, sc_org) in rows
+    ):
+        return "owned"
+    return "shared" if any(org.id in (m_org, sc_org) for (_, m_org, sc_org) in rows) else "foreign"
+
+
+def _owned_by(s: Session, user: AppUser, org: Organization) -> bool:
+    return _ownership(s, user, org) == "owned"
+
+
+def _match_ref(s: Session, ref: str, org: Organization) -> Tuple[Optional[AppUser], Optional[AppUser]]:
+    """(compte détenu, compte partagé) portant cet `external_ref` ; homonymes hors `org` ignorés."""
+    shared = None
+    for a in s.execute(select(AppUser).where(AppUser.external_ref == ref)).scalars():
+        kind = _ownership(s, a, org)
+        if kind == "owned":
+            return a, None
+        if kind == "shared" and shared is None:
+            shared = a
+    return None, shared
+
+
+def _in_org_domain(email: str, org: Organization) -> bool:
+    return bool(org.domain) and email.rpartition("@")[2] == org.domain.lower()
 
 
 def _ensure_membership(s: Session, user: AppUser, role: Role,
@@ -141,6 +183,8 @@ def sync_directory(
     student_by_ref: Dict[str, Student] = {}
     school_by_ref_user: Dict[str, Optional[School]] = {}
     seen_user_refs = set()
+    suspended_shared: List[AppUser] = []   # partagés suspendus (même sans external_ref) → détachés
+    org_school_ids = select(School.id).where(School.organization_id == org.id)
 
     for u in snapshot.users:
         role = classifier(u, ou_by_id)
@@ -150,14 +194,28 @@ def sync_directory(
         # Identité DURABLE : on ancre sur external_ref (id Google immuable), jamais l'email
         # (qui change : mariage, transfert, renommage). Repli email = adoption d'un compte
         # créé à la main (ex. IT admin bootstrap) pour ne pas le dupliquer.
-        au = None
-        if u.external_id:
-            au = s.execute(
-                select(AppUser).where(AppUser.external_ref == u.external_id)
-            ).scalar_one_or_none()
-        if au is None:
-            au = s.execute(select(AppUser).where(AppUser.email == email)).scalar_one_or_none()
-        if au is None:
+        # Seuls les comptes DÉTENUS par `org` sont adoptés/réécrits ; le repli email exige en
+        # plus le domaine vérifié du tenant. Compte d'un autre tenant / vendor → erreur, intact.
+        # Compte PARTAGÉ (lié à `org` ET ailleurs) → erreur, jamais réécrit ni étendu ; seuls
+        # ses liens dans `org` (classes, élève existant) suivent l'annuaire.
+        au, shared = _match_ref(s, u.external_id, org) if u.external_id else (None, None)
+        if au is None and shared is None:
+            found = s.execute(select(AppUser).where(AppUser.email == email)).scalar_one_or_none()
+            if found is not None:
+                kind = _ownership(s, found, org) if _in_org_domain(email, org) else "foreign"
+                if kind == "foreign":
+                    res.errors += 1
+                    continue
+                au, shared = (found, None) if kind == "owned" else (None, found)
+        if shared is not None:
+            res.errors += 1
+            if u.suspended:
+                suspended_shared.append(shared)  # perd son accès à `org` au déprovisioning
+                continue
+            au = shared
+            if au.external_ref:
+                seen_user_refs.add(au.external_ref)
+        elif au is None:
             au = AppUser(email=email, external_ref=u.external_id, is_active=not u.suspended)
             s.add(au); s.flush(); res.created += 1
         else:
@@ -174,7 +232,8 @@ def sync_directory(
                 res.updated += 1
 
         sc = _school_for_user(u)
-        _ensure_membership(s, au, role, org, sc)
+        if shared is None:
+            _ensure_membership(s, au, role, org, sc)
         appuser_by_ref[u.external_id] = au
         role_by_ref[u.external_id] = role
         school_by_ref_user[u.external_id] = sc
@@ -184,7 +243,12 @@ def sync_directory(
             if sc is None:
                 res.errors += 1  # élève sans école résoluble → on n'invente pas
                 continue
-            st = s.execute(select(Student).where(Student.user_id == au.id)).scalar_one_or_none()
+            q = select(Student).where(Student.user_id == au.id)
+            if shared is not None:
+                q = q.where(Student.school_id.in_(org_school_ids))
+            st = s.execute(q).scalar_one_or_none()
+            if st is None and shared is not None:
+                continue
             if st is None:
                 st = Student(school_id=sc.id, user_id=au.id, external_ref=u.external_id)
                 s.add(st); s.flush(); res.created += 1
@@ -273,12 +337,21 @@ def sync_directory(
                 continue  # tuteur d'un élève non rosterisé → ignoré
             email = g.email.lower()
             ref = g.external_id or email
-            pu = s.execute(
-                select(AppUser).where(AppUser.external_ref == ref)
-            ).scalar_one_or_none()
-            if pu is None:
-                pu = s.execute(select(AppUser).where(AppUser.email == email)).scalar_one_or_none()
-            if pu is None:
+            pu, shared = _match_ref(s, ref, org)   # mêmes règles que les users (cf. supra)
+            if pu is None and shared is None:
+                found = s.execute(select(AppUser).where(AppUser.email == email)).scalar_one_or_none()
+                if found is not None:
+                    kind = _ownership(s, found, org)
+                    if kind == "foreign":
+                        res.errors += 1
+                        continue
+                    pu, shared = (found, None) if kind == "owned" else (None, found)
+            if shared is not None:
+                res.errors += 1
+                pu = shared
+                if pu.external_ref:
+                    seen_user_refs.add(pu.external_ref)
+            elif pu is None:
                 pu = AppUser(email=email, external_ref=ref, is_active=True)
                 s.add(pu); s.flush(); res.created += 1
             else:
@@ -288,7 +361,8 @@ def sync_directory(
                     pu.email = email
                 if pu.deleted_at is not None:
                     pu.deleted_at, pu.is_active = None, True
-            _ensure_membership(s, pu, Role.PARENT, org, None)
+            if shared is None:
+                _ensure_membership(s, pu, Role.PARENT, org, None)
             link = s.get(ParentStudent, (pu.id, st.id))
             if link is None:
                 s.add(ParentStudent(user_id=pu.id, student_id=st.id, source="roster"))
@@ -298,9 +372,7 @@ def sync_directory(
             seen_user_refs.add(ref)
         s.flush()
         # retrait des liens obsolètes — UNIQUEMENT ceux issus du rostering (jamais les liens staff)
-        org_student_ids = select(Student.id).where(
-            Student.school_id.in_(select(School.id).where(School.organization_id == org.id))
-        )
+        org_student_ids = select(Student.id).where(Student.school_id.in_(org_school_ids))
         for ps in s.execute(
             select(ParentStudent).where(ParentStudent.student_id.in_(org_student_ids),
                                         ParentStudent.source == "roster")
@@ -326,10 +398,16 @@ def sync_directory(
         select(AppUser).join(Membership, Membership.user_id == AppUser.id)
         .where(Membership.organization_id == org.id, AppUser.external_ref.is_not(None))
     ).scalars().unique().all()
-    users_to_deact = [au for au in org_users
-                      if au.external_ref not in seen_user_refs and au.deleted_at is None]
+    absent_users = [au for au in org_users
+                    if au.external_ref not in seen_user_refs and au.deleted_at is None]
+    # Compte détenu → désactivation globale ; compte partagé avec un autre tenant → on ne
+    # touche pas l'AppUser global mais on lui RETIRE l'accès à `org` (memberships, classes, élève).
+    users_to_deact = [au for au in absent_users if _owned_by(s, au, org)]
+    users_to_detach = [au for au in absent_users if not _owned_by(s, au, org)]
+    users_to_detach += [au for au in suspended_shared if au not in users_to_detach]
 
-    projected = len(classes_to_deact) + len(schools_to_deact) + len(users_to_deact)
+    projected = (len(classes_to_deact) + len(schools_to_deact) + len(users_to_deact)
+                 + len(users_to_detach))
     baseline = sum(1 for au in org_users if au.deleted_at is None)
     blocked = (not force and projected >= deactivation_floor and baseline > 0
                and projected / baseline >= max_deactivation_ratio)
@@ -367,6 +445,37 @@ def sync_directory(
             for tc_row in s.execute(
                 select(TeacherClassroom).where(TeacherClassroom.user_id == au.id)
             ).scalars().all():
+                s.delete(tc_row)
+
+        for au in users_to_detach:
+            res.deactivated += 1
+            for m in s.execute(select(Membership).where(
+                Membership.user_id == au.id,
+                or_(Membership.organization_id == org.id, Membership.school_id.in_(org_school_ids)),
+            )).scalars().all():
+                s.delete(m)
+            # liens tuteur vers les élèves de `org` : sinon le rôle PARENT d'un autre tenant
+            # suffirait à garder la lecture sur ces élèves.
+            for ps in s.execute(select(ParentStudent).where(
+                ParentStudent.user_id == au.id,
+                ParentStudent.student_id.in_(
+                    select(Student.id).where(Student.school_id.in_(org_school_ids))),
+            )).scalars().all():
+                s.delete(ps)
+            for st in s.execute(select(Student).where(
+                Student.user_id == au.id, Student.school_id.in_(org_school_ids)
+            )).scalars().all():
+                if st.deleted_at is None:
+                    st.deleted_at = now
+                for sc_row in s.execute(
+                    select(StudentClassroom).where(StudentClassroom.student_id == st.id)
+                ).scalars().all():
+                    s.delete(sc_row)
+            for tc_row in s.execute(select(TeacherClassroom).where(
+                TeacherClassroom.user_id == au.id,
+                TeacherClassroom.classroom_id.in_(
+                    select(Classroom.id).where(Classroom.school_id.in_(org_school_ids))),
+            )).scalars().all():
                 s.delete(tc_row)
 
     # 5) Trace + état de l'intégration ---------------------------------------------------

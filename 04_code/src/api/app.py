@@ -1003,19 +1003,20 @@ def me(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
             classrooms.append({"id": str(cls.id), "name": cls.name, "school_id": str(cls.school_id)})
 
     schools = []
-    seen = set(ctx.school_ids)
-    # admin : écoles de son périmètre ; enseignant : écoles de ses classes
+    seen = list(ctx.school_ids)
+    # admin : écoles de son périmètre (en tête — le front route l'admin sur schools[0]) ;
+    # enseignant : écoles de ses classes
     for cid in ctx.classroom_ids:
         cls = s.get(Classroom, cid)
-        if cls is not None and cls.deleted_at is None:
-            seen.add(cls.school_id)
+        if cls is not None and cls.deleted_at is None and cls.school_id not in seen:
+            seen.append(cls.school_id)
     for sid in seen:
         sch = s.get(School, sid)
         if sch is not None and sch.deleted_at is None:
             schools.append({"id": str(sch.id), "name": sch.name})
             for cls in s.execute(active(Classroom).where(Classroom.school_id == sch.id)).scalars():
                 if not any(c["id"] == str(cls.id) for c in classrooms) \
-                        and ctx.has(Role.PED_ADMIN, Role.IT_ADMIN, Role.SUPER_ADMIN):
+                        and can_access_school(ctx, sch.id):
                     classrooms.append({"id": str(cls.id), "name": cls.name,
                                        "school_id": str(cls.school_id)})
 

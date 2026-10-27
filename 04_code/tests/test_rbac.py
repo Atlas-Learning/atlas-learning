@@ -85,7 +85,37 @@ def test_build_user_context_from_db():
     ctx = build_user_context(s, teacher.id)
     assert Role.TEACHER in ctx.roles
     assert cls.id in ctx.classroom_ids
-    assert school.id in ctx.school_ids
+    assert school.id not in ctx.school_ids   # périmètre admin uniquement
+
+
+def test_admin_role_bound_to_its_own_membership_scope():
+    """PED_ADMIN de S1 (ou IT_ADMIN org-only) + TEACHER de S2 : aucune portée admin sur S2."""
+    engine = make_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    s = Session(engine)
+    from src.models.org import Classroom, Organization
+    org = Organization(name="D"); s.add(org); s.flush()
+    s1, s2 = School(name="S1"), School(name="S2"); s.add_all([s1, s2]); s.flush()
+    own, other = Classroom(school_id=s2.id, name="own"), Classroom(school_id=s2.id, name="other")
+    s.add_all([own, other]); s.flush()
+    ped = AppUser(email="ped@x.io"); it = AppUser(email="it@x.io"); s.add_all([ped, it]); s.flush()
+    s.add_all([
+        Membership(user_id=ped.id, role=Role.PED_ADMIN, school_id=s1.id),
+        Membership(user_id=ped.id, role=Role.TEACHER, school_id=s2.id),
+        TeacherClassroom(user_id=ped.id, classroom_id=own.id),
+        Membership(user_id=it.id, role=Role.IT_ADMIN, organization_id=org.id),
+        Membership(user_id=it.id, role=Role.TEACHER, school_id=s2.id),
+        TeacherClassroom(user_id=it.id, classroom_id=own.id),
+    ])
+    s.commit()
+    ped_ctx = build_user_context(s, ped.id)
+    assert can_access_school(ped_ctx, s1.id) is True
+    for ctx in (ped_ctx, build_user_context(s, it.id)):
+        assert can_access_school(ctx, s2.id) is False
+        assert can_access_classroom(ctx, other.id, s2.id) is False
+        assert can_access_student(ctx, CHILD, s2.id, {other.id}) is False
+        assert can_access_classroom(ctx, own.id, s2.id) is True        # garde l'accès enseignant
+        assert can_access_student(ctx, CHILD, s2.id, {own.id}) is True
 
 
 # ---------- T6.3 auth (jetons de session signés — SSO uniquement) ----------

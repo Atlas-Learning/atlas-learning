@@ -32,6 +32,7 @@ from src.db import SessionLocal, make_engine
 from src.models.base import Role
 from src.models.org import AppUser, Membership
 from src.rbac.auth import make_single_use_token
+from src.rbac.authz import revoke_prior_grants
 
 
 def _web_base() -> str:
@@ -48,7 +49,9 @@ def onboard_linguist(s: Session, email: str, *, mint_link: bool = True,
         user = AppUser(email=email)
         s.add(user); s.flush()
     elif user.deleted_at is not None or not user.is_active:
-        # Réactive un compte staff précédemment désactivé plutôt que d'en créer un doublon.
+        # Réactive un compte staff précédemment désactivé plutôt que d'en créer un doublon,
+        # sans lui rendre ses rôles d'avant l'offboarding (seul linguist est ré-accordé).
+        revoke_prior_grants(s, user.id)
         user.deleted_at = None
         user.is_active = True
 

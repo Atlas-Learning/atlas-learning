@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import FrozenSet, Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from src.models.base import Role
@@ -103,3 +103,14 @@ def build_user_context(session: Session, user_id: uuid.UUID) -> UserContext:
         select(Student.id).where(Student.user_id == user_id)
     ).scalar_one_or_none()
     return UserContext(user_id, roles, school_ids, org_ids, classroom_ids, child_ids, own)
+
+
+def revoke_prior_grants(session: Session, user_id: uuid.UUID) -> None:
+    """À la RÉACTIVATION d'un compte désactivé : purge rôles et liens d'avant l'offboarding.
+
+    Le soft delete laisse les Memberships en place ; sans cette purge, réactiver le compte
+    restaurerait silencieusement tous ses anciens rôles (y compris admin d'un autre tenant).
+    L'appelant ré-accorde ensuite uniquement le rôle qu'il affirme.
+    """
+    for model in (Membership, ParentStudent, TeacherClassroom):
+        session.execute(delete(model).where(model.user_id == user_id))

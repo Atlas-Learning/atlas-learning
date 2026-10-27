@@ -142,7 +142,7 @@ def test_staff_unlink_guardian():
 
 def test_soft_deleted_guardian_email_hidden():
     # Revue 2026-07-08 : la jointure AppUser × ParentStudent exposait l'email d'un parent
-    # SOFT-DELETED au staff (le lien, lui, reste en base — réactivable par add_guardian).
+    # SOFT-DELETED au staff (le lien, lui, reste en base).
     client, engine, ids = _setup()
     h = {"Authorization": f"Bearer {ids['admin']}"}
     client.post(f"/students/{ids['alice']}/guardians",
@@ -155,6 +155,33 @@ def test_soft_deleted_guardian_email_hidden():
         s.commit()
     g = client.get(f"/students/{ids['alice']}/guardians", headers=h).json()["guardians"]
     assert [x["email"] for x in g] == ["mom@home.com"]     # dad masqué, mom toujours là
+    _clear()
+
+
+def test_soft_deleted_account_of_other_tenant_not_reactivated():
+    """Un prof/admin du tenant A ne peut pas réactiver un compte offboardé du tenant B."""
+    client, engine, ids = _setup()
+    with Session(bind=engine) as s:
+        org_b = Organization(name="Other", domain="other.edu"); s.add(org_b); s.flush()
+        ex = AppUser(email="exadmin@other.edu", external_ref="g_ex",
+                     is_active=False, deleted_at=utcnow()); s.add(ex); s.flush()
+        s.add(Membership(user_id=ex.id, role=Role.IT_ADMIN, organization_id=org_b.id))
+        s.commit()
+        ex_id, ex_token = ex.id, make_token(str(ex.id))
+    r = client.post(f"/students/{ids['alice']}/guardians",
+                    json={"email": "exadmin@other.edu"},
+                    headers={"Authorization": f"Bearer {ids['admin']}"})
+    assert r.status_code == 409
+    assert FAKE.sent == []                                  # aucun lien magique envoyé
+    with Session(bind=engine) as s:
+        ex = s.get(AppUser, ex_id)
+        assert ex.deleted_at is not None and ex.is_active is False
+        roles = set(s.execute(select(Membership.role).where(Membership.user_id == ex_id)).scalars())
+        assert roles == {Role.IT_ADMIN}
+        assert s.execute(select(ParentStudent).where(ParentStudent.user_id == ex_id)).first() is None
+    r = client.get(f"/students/{ids['alice']}/guardians",
+                   headers={"Authorization": f"Bearer {ex_token}"})
+    assert r.status_code == 401                             # get_context le rejette toujours
     _clear()
 
 

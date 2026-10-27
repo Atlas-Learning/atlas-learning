@@ -913,7 +913,7 @@ def list_guardians(student_id: uuid.UUID, ctx: UserContext = Depends(get_context
     rows = s.execute(
         select(AppUser, ParentStudent.source)
         .join(ParentStudent, ParentStudent.user_id == AppUser.id)
-        # Parent soft-deleted : le lien est conservé (réactivable par add_guardian)
+        # Parent soft-deleted : le lien est conservé en base
         # mais son email n'est plus exposé au staff (revue 2026-07-08).
         .where(ParentStudent.student_id == student_id,
                AppUser.deleted_at.is_(None))
@@ -935,7 +935,9 @@ def add_guardian(student_id: uuid.UUID, body: GuardianIn,
     if pu is None:
         pu = AppUser(email=email); s.add(pu); s.flush()  # staff-managed → pas d'external_ref
     elif pu.deleted_at is not None:
-        pu.deleted_at, pu.is_active = None, True
+        # Compte offboardé (potentiellement d'un autre tenant) : le staff d'un élève n'a pas
+        # autorité pour le réactiver → refus, aucun changement d'état, aucun lien envoyé.
+        raise HTTPException(status_code=409, detail="compte désactivé : rattachement impossible")
     school = s.get(School, st.school_id)
     org_id = school.organization_id if school is not None else None
     if s.execute(select(Membership).where(Membership.user_id == pu.id,

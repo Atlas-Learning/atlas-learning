@@ -32,6 +32,7 @@ from src.models.org import (
     TeacherClassroom,
     TenantIntegration,
 )
+from src.rbac.authz import revoke_prior_grants
 from src.rostering.directory import DirectorySnapshot, DirUser
 from src.rostering.mapping import classify_role, pick_homeroom, resolve_group_school
 
@@ -169,6 +170,7 @@ def sync_directory(
             if au.is_active == u.suspended:
                 au.is_active = not u.suspended; changed = True
             if au.deleted_at is not None:
+                revoke_prior_grants(s, au.id)   # seul le rôle affirmé par CE snapshot revient
                 au.deleted_at = None; changed = True
             if changed:
                 res.updated += 1
@@ -287,6 +289,7 @@ def sync_directory(
                 if pu.email != email:
                     pu.email = email
                 if pu.deleted_at is not None:
+                    revoke_prior_grants(s, pu.id)   # PARENT + ce lien uniquement
                     pu.deleted_at, pu.is_active = None, True
             _ensure_membership(s, pu, Role.PARENT, org, None)
             link = s.get(ParentStudent, (pu.id, st.id))

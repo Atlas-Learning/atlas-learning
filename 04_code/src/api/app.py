@@ -922,29 +922,66 @@ def list_guardians(student_id: uuid.UUID, ctx: UserContext = Depends(get_context
                           for (u, src) in rows]}
 
 
+_VENDOR_ROLES = (Role.SUPER_ADMIN, Role.LINGUIST)
+
+
+def _owned_by_org(s: Session, user_id: uuid.UUID, org_id: Optional[uuid.UUID]) -> bool:
+    """Même règle que la sync (`rostering.sync._ownership` == "owned") : au moins une
+    membership, TOUTES rattachées à `org_id` (directement ou via l'école), aucune vendor."""
+    if org_id is None:
+        return False
+    rows = s.execute(
+        select(Membership.role, Membership.organization_id, School.organization_id)
+        .outerjoin(School, Membership.school_id == School.id)
+        .where(Membership.user_id == user_id)
+    ).all()
+    return bool(rows) and all(
+        role not in _VENDOR_ROLES and m_org in (None, org_id) and sc_org in (None, org_id)
+        and (m_org or sc_org) is not None
+        for (role, m_org, sc_org) in rows
+    )
+
+
 @app.post("/students/{student_id}/guardians")
 def add_guardian(student_id: uuid.UUID, body: GuardianIn,
                  ctx: UserContext = Depends(get_context), s: Session = Depends(get_db),
                  sender=Depends(get_email_sender)):
-    """Rattache un email parent à l'élève — c'est le STAFF qui établit la confiance. Audité."""
+    """Rattache un email parent à l'élève — c'est le STAFF qui établit la confiance. Audité.
+
+    `AppUser` est global : seul un compte détenu par le tenant de l'élève (cf. `_owned_by_org`)
+    reçoit une membership PARENT ou est réactivé. Un compte d'un autre tenant n'est lié que s'il
+    est déjà PARENT, actif et non vendor (parent avec des enfants dans deux tenants) — sans
+    membership ajoutée ni champ global modifié. Sinon 409, sans aucune écriture."""
     st = _authorize_student(ctx, s, student_id, staff_only=True)   # 403/404 si pas staff de l'élève
     email = body.email.strip().lower()
     if not email:
         raise HTTPException(status_code=400, detail="email requis")
+    school = s.get(School, st.school_id)
+    org_id = school.organization_id if school is not None else None
     pu = s.execute(select(AppUser).where(AppUser.email == email)).scalar_one_or_none()
     if pu is None:
         pu = AppUser(email=email); s.add(pu); s.flush()  # staff-managed → pas d'external_ref
-    elif pu.deleted_at is not None:
-        pu.deleted_at, pu.is_active = None, True
-    school = s.get(School, st.school_id)
-    org_id = school.organization_id if school is not None else None
-    if s.execute(select(Membership).where(Membership.user_id == pu.id,
-                                          Membership.role == Role.PARENT)).scalar_one_or_none() is None:
-        s.add(Membership(user_id=pu.id, role=Role.PARENT, organization_id=org_id))
+        owned = True
+    else:
+        owned = _owned_by_org(s, pu.id, org_id)
+    if owned:
+        if pu.deleted_at is not None:
+            pu.deleted_at, pu.is_active = None, True
+        if s.execute(select(Membership).where(Membership.user_id == pu.id,
+                                              Membership.role == Role.PARENT)).first() is None:
+            s.add(Membership(user_id=pu.id, role=Role.PARENT, organization_id=org_id))
+    else:
+        roles = set(s.execute(select(Membership.role)
+                              .where(Membership.user_id == pu.id)).scalars())
+        if (Role.PARENT not in roles or roles.intersection(_VENDOR_ROLES)
+                or pu.deleted_at is not None or not pu.is_active):
+            raise HTTPException(status_code=409,
+                                detail="ce compte ne peut pas être rattaché depuis cet établissement")
     if s.get(ParentStudent, (pu.id, st.id)) is None:
         s.add(ParentStudent(user_id=pu.id, student_id=st.id, source="staff"))
     log_action(s, action="guardian.link", user_id=ctx.user_id, school_id=st.school_id,
-               resource_type="student", resource_id=st.id, details={"parent": email})
+               resource_type="student", resource_id=st.id,
+               details={"parent": email, "cross_tenant": not owned})
     if body.send_invite:
         _send_parent_link(sender, pu)
     s.commit()

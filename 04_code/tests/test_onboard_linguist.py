@@ -74,6 +74,20 @@ def test_reactivates_soft_deleted_account():
         assert _count(s, AppUser) == 1                          # pas de doublon
 
 
+def test_reactivation_does_not_restore_prior_roles():
+    engine = _engine()
+    with Session(bind=engine) as s:
+        from src.models.base import utcnow
+        u = AppUser(email="ling@atlas.ae", is_active=False, deleted_at=utcnow())
+        s.add(u); s.flush()
+        s.add(Membership(user_id=u.id, role=Role.IT_ADMIN))     # rôle d'avant l'offboarding
+        s.commit()
+    with Session(bind=engine) as s:
+        onboard_linguist(s, "ling@atlas.ae")
+    with Session(bind=engine) as s:
+        assert [m.role for m in s.execute(select(Membership)).scalars()] == [Role.LINGUIST]
+
+
 def test_no_link_option():
     engine = _engine()
     with Session(bind=engine) as s:

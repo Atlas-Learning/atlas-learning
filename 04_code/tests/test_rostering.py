@@ -242,6 +242,30 @@ def test_guardian_removal_unlinks_and_deactivates_parent():
     assert s.execute(select(ParentStudent)).scalars().all() == []
 
 
+def test_guardian_reactivation_does_not_restore_prior_roles():
+    """Un compte offboardé (ex-IT admin d'un autre tenant) réactivé comme tuteur ne récupère
+    QUE le rôle PARENT et le lien accordés par cette sync."""
+    s, org = _setup()
+    sync_directory(s, org, _base_snapshot(), classifier=_classifier, now=NOW); s.commit()
+    org_b = Organization(name="Other", domain="other.edu"); s.add(org_b); s.flush()
+    sc_b = School(name="B1", organization_id=org_b.id); s.add(sc_b); s.flush()
+    ex = AppUser(email="ex@other.edu", external_ref="g_ex", is_active=False, deleted_at=NOW)
+    s.add(ex); s.flush()
+    s.add(Membership(user_id=ex.id, role=Role.IT_ADMIN, organization_id=org_b.id,
+                     school_id=sc_b.id))
+    s.commit()
+
+    snap = _with_guardians([DirGuardian("u_alice", "ex@other.edu", "Ex", "g_ex")])
+    sync_directory(s, org, snap, classifier=_classifier, now=NOW); s.commit()
+
+    ex = s.get(AppUser, ex.id)
+    assert ex.deleted_at is None and ex.is_active is True
+    ctx = build_user_context(s, ex.id)
+    assert ctx.roles == {Role.PARENT}
+    assert ctx.school_ids == frozenset() and ctx.org_ids == {org.id}
+    assert ctx.child_student_ids == {_student_of(s, "alice@school.edu").id}
+
+
 def test_staff_link_survives_classroom_sync():
     """Coexistence : un lien parent posé par le staff n'est PAS effacé par une sync Classroom."""
     s, org = _setup()

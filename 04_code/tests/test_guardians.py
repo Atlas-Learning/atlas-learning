@@ -5,6 +5,7 @@ le parent ne s'auto-déclare jamais. Un parent peut avoir plusieurs enfants.
 """
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -88,6 +89,41 @@ def test_unrelated_teacher_cannot_link():
     h = {"Authorization": f"Bearer {ids['outsider']}"}  # prof de 4B, pas d'Alice (4A)
     r = client.post(f"/students/{ids['alice']}/guardians", json={"email": "x@home.com"}, headers=h)
     assert r.status_code == 403
+    _clear()
+
+
+def _non_staff_tokens(engine, alice_id):
+    """Session élève d'Alice, parent lié d'Alice, et prof de 4B qui est AUSSI parent d'Alice."""
+    with Session(bind=engine) as s:
+        alice = s.get(Student, uuid.UUID(alice_id))
+        s.add(Membership(user_id=alice.user_id, role=Role.STUDENT))
+        dad = AppUser(email="dad@home.com"); s.add(dad); s.flush()
+        s.add(Membership(user_id=dad.id, role=Role.PARENT))
+        s.add(ParentStudent(user_id=dad.id, student_id=alice.id, source="roster"))
+        teacher = s.execute(select(AppUser).where(AppUser.email == "other@school.edu")).scalar_one()
+        s.add(ParentStudent(user_id=teacher.id, student_id=alice.id, source="roster"))
+        s.commit()
+        return str(dad.id), {"student": make_token(str(alice.user_id)),
+                             "parent": make_token(str(dad.id)),
+                             "teacher_parent": make_token(str(teacher.id))}
+
+
+def test_parent_and_student_cannot_manage_guardians():
+    # Le parent ne s'auto-déclare jamais ; l'élève ne gère pas ses tuteurs : 403 sans écriture ni email.
+    client, engine, ids = _setup()
+    dad_id, tokens = _non_staff_tokens(engine, ids["alice"])
+    for who, tok in tokens.items():
+        h = {"Authorization": f"Bearer {tok}"}
+        assert client.get(f"/students/{ids['alice']}/guardians", headers=h).status_code == 403, who
+        r = client.post(f"/students/{ids['alice']}/guardians",
+                        json={"email": "evil@home.com"}, headers=h)
+        assert r.status_code == 403, who
+        r = client.delete(f"/students/{ids['alice']}/guardians/{dad_id}", headers=h)
+        assert r.status_code == 403, who
+    assert FAKE.sent == []
+    with Session(bind=engine) as s:
+        assert s.execute(select(AppUser).where(AppUser.email == "evil@home.com")).first() is None
+        assert s.get(ParentStudent, (uuid.UUID(dad_id), uuid.UUID(ids["alice"]))) is not None
     _clear()
 
 

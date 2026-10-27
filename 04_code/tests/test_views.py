@@ -109,6 +109,27 @@ def test_t55_ac2_no_student_pii_ac3_exportable():
     app.dependency_overrides.clear()
 
 
+def test_admin_role_not_applied_to_school_of_teacher_membership():
+    """PED_ADMIN de A + TEACHER de B (classe c2) : aucune portée admin sur l'école B."""
+    client, ids = _setup()
+    s = app.dependency_overrides[get_db]()
+    c3 = Classroom(school_id=ids["schoolB"], name="4C"); s.add(c3); s.flush()
+    st = Student(school_id=ids["schoolB"], classroom_id=c3.id); s.add(st)
+    s.add_all([Membership(user_id=ids["adminA"], role=Role.TEACHER, school_id=ids["schoolB"]),
+               TeacherClassroom(user_id=ids["adminA"], classroom_id=ids["c2"])])
+    s.commit()
+    h = _auth(ids["adminA"])
+    assert client.get(f"/schools/{ids['schoolB']}/overview", headers=h).status_code == 403
+    assert client.get(f"/classrooms/{c3.id}/students", headers=h).status_code == 403
+    assert client.get(f"/students/{st.id}/profile", headers=h).status_code == 403
+    assert client.get(f"/classrooms/{ids['c2']}/students", headers=h).status_code == 200
+    me = client.get("/me", headers=h).json()
+    listed = {c["id"] for c in me["classrooms"]}
+    assert str(c3.id) not in listed and {str(ids["c1"]), str(ids["c2"])} <= listed
+    assert me["schools"][0]["id"] == str(ids["schoolA"])   # le front route l'admin sur schools[0]
+    app.dependency_overrides.clear()
+
+
 def test_no_token_401():
     client, ids = _setup()
     assert client.get(f"/classrooms/{ids['c1']}/gaps").status_code == 401

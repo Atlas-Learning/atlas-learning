@@ -87,7 +87,11 @@ def build_user_context(session: Session, user_id: uuid.UUID) -> UserContext:
         select(Membership).where(Membership.user_id == user_id)
     ).scalars().all()
     roles = frozenset(m.role for m in memberships)
-    school_ids = frozenset(m.school_id for m in memberships if m.school_id)
+    # Seules les écoles portées par une membership admin : l'école d'une membership
+    # enseignant/élève/parent ne doit jamais recevoir la portée admin d'un autre rôle.
+    school_ids = frozenset(m.school_id for m in memberships
+                           if m.school_id and m.role in (Role.IT_ADMIN, Role.PED_ADMIN,
+                                                         Role.SUPER_ADMIN))
     org_ids = frozenset(m.organization_id for m in memberships if m.organization_id)
     classroom_ids = frozenset(session.execute(
         select(TeacherClassroom.classroom_id).where(TeacherClassroom.user_id == user_id)

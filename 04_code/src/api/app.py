@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import secrets
 import uuid
+from dataclasses import replace
 from pathlib import Path
 from typing import Callable, List, Literal, Optional
 
@@ -908,7 +909,7 @@ class GuardianIn(BaseModel):
 def list_guardians(student_id: uuid.UUID, ctx: UserContext = Depends(get_context),
                    s: Session = Depends(get_db)):
     """Tuteurs d'un élève (prof/admin de l'élève)."""
-    _authorize_student(ctx, s, student_id)
+    _authorize_student(ctx, s, student_id, staff_only=True)
     rows = s.execute(
         select(AppUser, ParentStudent.source)
         .join(ParentStudent, ParentStudent.user_id == AppUser.id)
@@ -926,7 +927,7 @@ def add_guardian(student_id: uuid.UUID, body: GuardianIn,
                  ctx: UserContext = Depends(get_context), s: Session = Depends(get_db),
                  sender=Depends(get_email_sender)):
     """Rattache un email parent à l'élève — c'est le STAFF qui établit la confiance. Audité."""
-    st = _authorize_student(ctx, s, student_id)   # 403/404 si pas le droit sur cet élève
+    st = _authorize_student(ctx, s, student_id, staff_only=True)   # 403/404 si pas staff de l'élève
     email = body.email.strip().lower()
     if not email:
         raise HTTPException(status_code=400, detail="email requis")
@@ -954,7 +955,7 @@ def add_guardian(student_id: uuid.UUID, body: GuardianIn,
 def remove_guardian(student_id: uuid.UUID, user_id: uuid.UUID,
                     ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
     """Retire un lien tuteur (prof/admin de l'élève). Audité."""
-    st = _authorize_student(ctx, s, student_id)
+    st = _authorize_student(ctx, s, student_id, staff_only=True)
     ps = s.get(ParentStudent, (user_id, st.id))
     if ps is None:
         raise HTTPException(status_code=404, detail="lien introuvable")
@@ -1028,7 +1029,12 @@ def me(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
     }
 
 
-def _authorize_student(ctx: UserContext, s: Session, student_id: uuid.UUID) -> Student:
+def _authorize_student(ctx: UserContext, s: Session, student_id: uuid.UUID,
+                       staff_only: bool = False) -> Student:
+    # staff_only (gestion des tuteurs) : seules les branches staff de can_access_student
+    # comptent — jamais le lien parent ni l'identité élève, même cumulés à un rôle staff.
+    if staff_only:
+        ctx = replace(ctx, child_student_ids=frozenset(), own_student_id=None)
     # Soft delete filtré (revue sécurité) : un élève supprimé — ou dont l'école est
     # supprimée — n'est plus accessible par AUCUN endpoint (sessions, vues, parent).
     st = s.execute(active(Student).where(Student.id == student_id)).scalar_one_or_none()

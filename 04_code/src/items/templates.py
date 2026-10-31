@@ -20,7 +20,8 @@ Trois opérations :
    changé repart en NOUVELLE version `ai_generated` (`review.supersede`) : l'ancienne sort du
    pool, ses réponses lui restent attachées et ne pèsent plus sur la calibration de la
    nouvelle (n_responses = 0). Lignée inchangée → rien (idempotent). Rang nouveau → item
-   créé en version 1. La version arabe repart par le pipeline linguiste.
+   créé en version 1. La version arabe est PROPOSÉE par `arabic_deterministic.render_arabic`
+   (déterministe, nombres préservés) et repasse par la validation du linguiste.
 """
 from __future__ import annotations
 
@@ -32,6 +33,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.items import deterministic
+from src.items.arabic_deterministic import render_arabic
 from src.items.generation import GeneratedItem
 from src.items.review import InvalidTransition, insert_generated_items, promote, supersede
 from src.models.base import AnswerFormat, ItemFlagStatus, ItemOrigin, ItemStatus, utcnow
@@ -244,6 +246,7 @@ def regenerate_template(s: Session, key: str, *, by: str, resolver_id: Optional[
             if not dry_run:
                 to_create.append(GeneratedItem(
                     competency_id=comp.id, content_en=entry["content"],
+                    content_ar=render_arabic(entry["content"]),
                     answer_format=AnswerFormat.MCQ, difficulty_prior=entry["difficulty_prior"],
                     context_tags={**entry["context_tags"], "gen": "deterministic"},
                     provenance={"generator": "deterministic", "method": "exact-fraction",
@@ -258,6 +261,7 @@ def regenerate_template(s: Session, key: str, *, by: str, resolver_id: Optional[
         if dry_run:
             continue
         supersede(s, cur, content_en=entry["content"], by=by,
+                  content_ar=render_arabic(entry["content"]),
                   context_tags={**entry["context_tags"], "gen": "deterministic"},
                   difficulty_prior=entry["difficulty_prior"])
         if resolver_id is not None:

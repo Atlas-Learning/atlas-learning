@@ -20,6 +20,7 @@ from sqlalchemy import delete, func, select
 
 from src.db import SessionLocal, make_engine
 from src.items.deterministic import bank_items
+from src.items.arabic_deterministic import render_arabic
 from src.items.generation import GeneratedItem
 from src.items.review import insert_generated_items
 from src.models.base import AnswerFormat
@@ -54,6 +55,7 @@ def main() -> None:
                     context_tags={**it["context_tags"], "gen": "deterministic"},
                     provenance={"generator": "deterministic", "method": "exact-fraction"},
                     template_key=it["template_key"],
+                    content_ar=render_arabic(it["content"]),   # proposée, à valider (linguiste)
                 )
                 for it in items
             ]

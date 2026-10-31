@@ -176,7 +176,8 @@ def test_regenerate_after_code_fix_creates_versions_and_retires_old(monkeypatch)
     new = [i for i in templates.lineage(s, f"{CODE}#02") if i.version == 2][0]
     old = s.get(Item, old.id)
     assert new.status == ItemStatus.AI_GENERATED and new.supersedes_id == old.id
-    assert new.content_en["options"][-1] == "999" and new.content_ar is None and new.ar_validated is False
+    assert new.content_en["options"][-1] == "999" and new.ar_validated is False
+    assert new.content_ar and new.content_ar["options"][-1] == "999"      # proposition AR déterministe, à valider
     assert new.n_responses == 0 and new.difficulty_elo == new.difficulty_prior       # calibration neuve
     assert old.status == ItemStatus.QUARANTINED and old.n_responses == 40            # réponses conservées
     assert s.get(type(fl), fl.id).status == ItemFlagStatus.ACCEPTED

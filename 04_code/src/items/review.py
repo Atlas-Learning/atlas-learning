@@ -54,13 +54,14 @@ def insert_generated_items(session: Session, generated: List[GeneratedItem]) -> 
         item = Item(
             competency_id=g.competency_id,
             content_en=g.content_en,
-            content_ar=None,  # rempli en T2.4
+            content_ar=g.content_ar,  # None (T2.4 : LLM) ou proposition déterministe (A3), non validée
             answer_format=g.answer_format,
             difficulty_prior=g.difficulty_prior,
             context_tags=dict(g.context_tags),
             status=ItemStatus.AI_GENERATED,
             provenance=dict(g.provenance or {}),
             template_key=g.template_key,
+            ar_validated=False,
         )
         session.add(item)
         items.append(item)

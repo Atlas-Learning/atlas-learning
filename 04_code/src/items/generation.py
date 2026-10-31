@@ -44,6 +44,8 @@ class GeneratedItem(BaseModel):
     provenance: dict = Field(default_factory=dict)
     # Refonte A2 : gabarit d'origine (ex. `MATH.G4.NF.ADD_LIKE#03`), None pour un item LLM.
     template_key: Optional[str] = None
+    # Refonte A3 : version arabe PROPOSÉE (arabic_deterministic), à valider par le linguiste.
+    content_ar: Optional[dict] = None
 
 
 _SYSTEM = (

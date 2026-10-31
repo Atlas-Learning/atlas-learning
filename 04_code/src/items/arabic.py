@@ -164,7 +164,7 @@ _AR_ALLOWED_CHAR = re.compile(
     "\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069"  # controles bidi
     "0-9A-Za-z\\s"
     "\u2010-\u2015\u2026\u00A0"  # tirets, ellipse, nbsp
-    ".,:;!?%()\\[\\]{}\"'\u00AB\u00BB_+\\-\u00D7\u00F7*/=<>\u2264\u2265\u00B0"
+    ".,:;!?%()\\[\\]{}\"'\u00AB\u00BB_+\\-\u2212\u00D7\u00F7*/=<>\u2264\u2265\u00B0"  # \u2212 = « − » des énoncés
     "]"
 )
 

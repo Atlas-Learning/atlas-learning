@@ -66,7 +66,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **E3 · Groupe et mini-leçon** — `maquettes/Group.dc.html`
 - Route : `/teacher/[classroomId]/actions/[actionId]`
-- API : `GET /plan-actions/{id}`, `PATCH /plan-actions/{id}/members` `{add, remove}`, `POST /plan-actions/{id}/dismiss` (livrés B2) ; `GET /lessons/{id}`, `GET /lessons?competency_id=`, `POST /linguist/lessons/{id}/arabic`, `POST /linguist/lessons/{id}/validate`, `POST /lessons/{id}/activate` (livrés B3) ; `POST /plan-actions/{id}/done` (B4)
+- API : `GET /plan-actions/{id}`, `PATCH /plan-actions/{id}/members` `{add, remove}`, `POST /plan-actions/{id}/dismiss` (livrés B2) ; `GET /lessons/{id}`, `GET /lessons?competency_id=`, `POST /linguist/lessons/{id}/arabic`, `POST /linguist/lessons/{id}/validate`, `POST /lessons/{id}/activate` (livrés B3) ; `POST /plan-actions/{id}/done` → `{action, recheck}` puis `POST /checkins/{id}/start` pour ouvrir le re-check planifié (livrés B4)
 - Point de départ : `web/components/DiagnosisBlock.tsx`, `RemediationModal.tsx`, `POST /remediation/preview`
 - Acceptation :
   - liste des élèves avec l'erreur typique observée et l'état de la compétence racine ;
@@ -76,7 +76,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **E4 · Carte de preuve** — `maquettes/Proof.dc.html`
 - Route : `/teacher/[classroomId]/actions/[actionId]/proof`
-- API : `GET /plan-actions/{id}/proof`
+- API : `GET /plan-actions/{id}/proof` (livré B4 : `header {unlocked, rechecked, not_rechecked}`, par élève `before/after/ci/outcome/suggestion`, `loop_closed`) ; `GET /classrooms/{id}/proofs?since=` (bandeau E1 + `loops_closed`)
 - Point de départ : `GET /schools/{school_id}/proof` (existant, niveau école)
 - Acceptation :
   - par élève : position avant, position après, intervalle de confiance, état (débloqué, inchangé, non re-mesuré) ;

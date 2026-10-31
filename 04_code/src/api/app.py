@@ -48,11 +48,12 @@ from src.items import templates as item_templates
 from src.items import review_queue
 from src.api import checkin_service
 from src.api import plan_service
+from src.api import proof_service
 from src.api import lesson_service
 from src.models.lesson import MiniLesson
 from src.models.plan import PlanAction, WeeklyPlan
 from datetime import date
-from src.models.base import CheckInKind
+from src.models.base import CheckInKind, CheckInStatus
 from src.models.checkin import CheckIn
 from src.items.arabic import (
     ALLAM_MODEL,
@@ -1828,13 +1829,32 @@ def close_checkin_ep(checkin_id: uuid.UUID, ctx: UserContext = Depends(get_conte
     ci = _get_checkin(s, checkin_id)
     if not can_run_checkin(ctx, ci.classroom_id):
         raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
+    if ci.status == CheckInStatus.SCHEDULED:
+        raise HTTPException(status_code=409, detail="check-in planifié, pas encore démarré")
     result = checkin_service.close_checkin(s, ci, by=ctx.user_id)
-    plan_id = None
-    if not result["already_closed"] and ci.kind == CheckInKind.FULL:
-        plan_id = str(plan_service.generate_plan_for_checkin(s, ci, by=ctx.user_id).id)   # B2
-    # B4 (preuve, kind=targeted) se branchera ici.
+    plan_id, proof = None, None
+    if not result["already_closed"]:
+        if ci.kind == CheckInKind.FULL:
+            plan_id = str(plan_service.generate_plan_for_checkin(s, ci, by=ctx.user_id).id)   # B2
+        elif ci.plan_action_id is not None:
+            proof = proof_service.compute_proofs(s, ci, by=ctx.user_id)                    # B4
     s.commit()
-    return {**result, "plan_id": plan_id, "progress": checkin_service.progress(s, ci)}
+    return {**result, "plan_id": plan_id, "proof": proof, "progress": checkin_service.progress(s, ci)}
+
+
+@app.post("/checkins/{checkin_id}/start")
+def start_checkin_ep(checkin_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                     s: Session = Depends(get_db)):
+    """Démarre un re-check planifié (B4) : code alloué, les membres peuvent rejoindre."""
+    ci = _get_checkin(s, checkin_id)
+    if not can_run_checkin(ctx, ci.classroom_id):
+        raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
+    try:
+        proof_service.start_checkin(s, ci, by=ctx.user_id)
+    except proof_service.ProofError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    s.commit()
+    return checkin_service.checkin_payload(ci, with_code=True)
 
 
 @app.post("/checkins/join")
@@ -1913,13 +1933,53 @@ def plan_action_members_ep(action_id: uuid.UUID, body: MembersPatchIn,
     return plan_service.action_payload(s, a)
 
 
+@app.post("/plan-actions/{action_id}/done")
+def plan_action_done_ep(action_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                        s: Session = Depends(get_db)):
+    """E3 · « Marquer comme enseignée » : fige les before_* des membres et planifie le re-check
+    ciblé (B4). Renvoie l'action et le check-in planifié (à démarrer : POST /checkins/{id}/start)."""
+    a, plan = _get_action(s, action_id)
+    if not can_run_checkin(ctx, plan.classroom_id):
+        raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
+    try:
+        _, recheck = proof_service.mark_done(s, a, by=ctx.user_id)
+    except proof_service.ProofError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    s.commit()
+    return {"action": plan_service.action_payload(s, a),
+            "recheck": checkin_service.checkin_payload(recheck, with_code=True)}
+
+
+@app.get("/plan-actions/{action_id}/proof")
+def plan_action_proof_ep(action_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                         s: Session = Depends(get_db)):
+    """E4 · Carte de preuve (lisible par qui lit la classe : enseignant, coordinateur, super admin)."""
+    a, plan = _get_action(s, action_id)
+    if not can_access_classroom(ctx, plan.classroom_id, plan.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette action")
+    return proof_service.proof_payload(s, a, with_code=can_run_checkin(ctx, plan.classroom_id))
+
+
+@app.get("/classrooms/{classroom_id}/proofs")
+def classroom_proofs_ep(classroom_id: uuid.UUID, since: Optional[date] = None,
+                        ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    cls = _get_live_classroom(s, classroom_id)
+    if not can_access_classroom(ctx, classroom_id, cls.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette classe")
+    return proof_service.classroom_proofs(s, classroom_id, since=since,
+                                          with_code=can_run_checkin(ctx, classroom_id))
+
+
 @app.post("/plan-actions/{action_id}/dismiss")
 def plan_action_dismiss_ep(action_id: uuid.UUID, ctx: UserContext = Depends(get_context),
                            s: Session = Depends(get_db)):
     a, plan = _get_action(s, action_id)
     if not can_run_checkin(ctx, plan.classroom_id):
         raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
-    plan_service.dismiss(s, a, by=ctx.user_id)
+    try:
+        plan_service.dismiss(s, a, by=ctx.user_id)
+    except plan_service.PlanError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     s.commit()
     return plan_service.action_payload(s, a)
 

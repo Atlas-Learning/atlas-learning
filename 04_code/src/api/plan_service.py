@@ -233,6 +233,8 @@ def set_members(s: Session, action: PlanAction, *, add: List[uuid.UUID], remove:
 
 
 def dismiss(s: Session, action: PlanAction, *, by: uuid.UUID) -> None:
+    if action.status == PlanActionStatus.DONE:
+        raise PlanError("une action faite ne s'abandonne plus")
     if action.status == PlanActionStatus.PROPOSED:
         action.status, action.dismissed_at = PlanActionStatus.DISMISSED, utcnow()
     log_action(s, action="plan_action.dismiss", school_id=action.school_id, user_id=by,

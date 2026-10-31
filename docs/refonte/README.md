@@ -12,6 +12,7 @@ Ce dossier contient tout ce qu'il faut pour implémenter la refonte avec Claude 
 | `05-questions-ouvertes.md` | Ce qui n'est pas tranché : à ne pas inventer |
 | `06-attribution-des-roles.md` | Comment `dept_lead` et `group_admin` sont attribués et se connectent, avec ou sans SSO |
 | `07-tests-beta.md` | Ce qui attend la première passe bêta : relecture arabe, vérification des écrans en navigateur |
+| `08-redaction-lecons.md` | Mode d'emploi pour écrire les mini-leçons : quelles compétences, quel format, comment vérifier |
 | `maquettes/` | Les 22 écrans de référence (`.dc.html`) |
 
 Documents de pilotage côté produit (non nécessaires pour coder) :

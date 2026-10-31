@@ -39,6 +39,7 @@ Depuis `04_code/` :
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest
 make test          # suite complète (doit rester verte) — alias de .venv/bin/python -m pytest -q
 make migrate       # alembic upgrade head (SQLite par défaut, DATABASE_URL pour Postgres)
+make demo-reset    # base de démo SQLite : six semaines de boucle hebdomadaire (B7)
 .venv/bin/python scripts/grant_role.py --help   # attribuer dept_lead / group_admin (docs/refonte/06)
 .venv/bin/python scripts/onboard_staff.py --role content_reviewer --email …   # staff Atlas global
 .venv/bin/python scripts/backfill_template_keys.py --dry-run   # Q15 : clés de gabarit sans perte
@@ -50,7 +51,7 @@ cd web && npm install && npm run dev
 
 Contrainte CI : Python 3.9 (`Optional[X]`, pas `X | None`). La CI rejoue aussi upgrade → downgrade 0013 → upgrade sur Postgres.
 
-`make demo-reset` n'existe pas encore `[À CLARIFIER]` : la démo passe aujourd'hui par `scripts/provision_demo.py` (voir son en-tête), le `demo/seed_demo_school.py` du ticket B7 est à créer.
+`make demo-reset` (B7) : efface `atlas_dev.db`, migre, seede référentiel, crosswalk et leçons, puis `demo/seed_demo_school.py` produit six semaines de boucle (groupe de deux écoles, 26 élèves en 4B, plans, actions enseignées, re-checks, preuves, signalements, un compte par persona). SSO simulé : `OIDC_DEV_LOGIN=1` puis `POST /dev/login {"email"}`.
 
 Avant de déclarer une tâche finie : `make test` vert, migration aller-retour OK, écrans vérifiés en EN et en AR.
 

@@ -72,7 +72,7 @@ Format : **Objectif** · **Fichiers** · **Fait quand** · **Tests**.
 
 **B7 · Démo**
 - Objectif : `demo/seed_demo_school.py` produit des plans, des actions faites et des preuves sur 6 semaines.
-- Fait quand : `make demo-reset` donne une école où chaque écran de la phase B a du contenu.
+- Fait quand : `make demo-reset` donne une école où chaque écran de la phase B a du contenu. **Livré** : `demo/seed_demo_school.py` (profils latents par élève, six semaines, deux écoles, rejouable).
 
 ## Phase C — Curriculums dynamiques
 

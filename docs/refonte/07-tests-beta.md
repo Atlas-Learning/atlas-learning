@@ -27,8 +27,11 @@ dérouler d'un bloc lors de la première passe bêta, pas au fil des tickets (d�
 | S1 rejoindre, S2 session, S3 débloqué | `/student/join`, `/student?session=` | 2 comptes élèves de la démo |
 | O5 éditeur de leçons et couverture des racines | `/ops/lessons` | relecteur ou super admin |
 
-Pré-requis : `make migrate`, `scripts/seed_referentiel.py`, `scripts/generate_bank_deterministic.py`
-(pose les clés de gabarit et la proposition arabe), `scripts/provision_demo.py`, `OIDC_DEV_LOGIN=1`.
+Pré-requis : `make demo-reset` (schéma, référentiel, banque activée avec clés et arabe, leçons, six
+semaines de boucle, un compte par persona), puis `OIDC_DEV_LOGIN=1` et `cd web && npm run dev`.
+Comptes : `prof@demo.atlas` (4B, Al Noor), `prof2@demo.atlas` (4A, Riverside), `admin@demo.atlas`,
+`coord@demo.atlas`, `group@demo.atlas`, `it@demo.atlas`, `ops@atlas.io`, `relecteur@atlas.io`,
+`linguiste@atlas.io`, `eleve01@demo.atlas` … `eleve26@demo.atlas`, `parent1@demo.atlas`.
 
 ## Points à observer pendant la passe
 

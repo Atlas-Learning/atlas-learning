@@ -8,7 +8,7 @@ Relevé le 2026-10-31 sur `origin/main` (commit `97773c3`). Le spec de `docs/ref
 | --- | --- | --- |
 | Code à la racine (`src/`, `web/`, …) | Code dans `04_code/` | Tous les chemins du spec se lisent relatifs à `04_code/` (dit dans `CLAUDE.md`) |
 | `make test`, `make demo-reset` | Pas de Makefile | `04_code/Makefile` ajouté avec `test` et `migrate` ; `demo-reset` reste à définir |
-| `demo/` (dossier de démo isolé) | N'existe pas ; `scripts/provision_demo.py` fait office | Ticket B7 : créer `demo/seed_demo_school.py` ou étendre `provision_demo.py` `[À CLARIFIER]` |
+| `demo/` (dossier de démo isolé) | **Créé (B7)** : `demo/seed_demo_school.py`, `make demo-reset` | `scripts/provision_demo.py` reste pour l'ancien parcours (une classe, pas de boucle) |
 
 ## État des migrations et des rôles
 
@@ -29,7 +29,7 @@ Relevé le 2026-10-31 sur `origin/main` (commit `97773c3`). Le spec de `docs/ref
 | `tests/test_item_flags.py` | A2 | À créer (normal) |
 | `data/crosswalk_fractions_draft.json` | O3 | `data/` ne contient que `referentiel_fractions.json` ; le crosswalk est seedé par `scripts/seed_crosswalk.py` |
 | `data/lessons/` | B3 | À créer (normal) |
-| `demo/seed_demo_school.py` | B7 | À créer (normal) |
+| `demo/seed_demo_school.py` | B7 | Créé |
 
 ## Fichiers cités qui existent bien
 

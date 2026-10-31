@@ -136,6 +136,44 @@ def test_engine_idempotent_second_run_no_change():
     assert run2.created_count == 0 and run2.updated_count == 0 and run2.deactivated_count == 0
 
 
+# ---------- Refonte A1 : niveau de la classe (OneRoster `grades` → Classroom.grade) ----------
+
+def test_grade_from_codes_ceds():
+    from src.rostering.oneroster import grade_from_codes
+    assert grade_from_codes(["04"]) == 4
+    assert grade_from_codes(["4"]) == 4
+    assert grade_from_codes("KG") == 0 and grade_from_codes(["K"]) == 0
+    assert grade_from_codes(["13"]) == 13
+    # multi-niveaux, code non numérique, vide, absent → on n'invente pas
+    assert grade_from_codes(["04", "05"]) is None
+    assert grade_from_codes(["PK"]) is None and grade_from_codes(["UG"]) is None
+    assert grade_from_codes([]) is None and grade_from_codes(None) is None
+    assert grade_from_codes(["99"]) is None
+
+
+def test_snapshot_and_sync_carry_class_grade():
+    cols = _v11_collections()
+    cols["classes"][0]["grades"] = ["04"]
+    cols["classes"].append({"sourcedId": "cls-2", "status": "active", "title": "Club",
+                            "school": {"sourcedId": "sch-1"}})          # sans `grades`
+    snap = OneRosterAdapter(_transport(cols), version="v1p1").snapshot()
+    by_ref = {g.external_id: g for g in snap.groups}
+    assert by_ref["cls-1"].grade == 4 and by_ref["cls-2"].grade is None
+
+    s, org = _mem_org()
+    sync_directory(s, org, snap); s.commit()
+    cls1 = s.execute(select(Classroom).where(Classroom.external_ref == "cls-1")).scalar_one()
+    cls2 = s.execute(select(Classroom).where(Classroom.external_ref == "cls-2")).scalar_one()
+    assert cls1.grade == 4 and cls2.grade is None
+
+    # la source change le niveau → suivi (et compté comme mise à jour)
+    cols["classes"][0]["grades"] = ["05"]
+    run = sync_directory(s, org, OneRosterAdapter(_transport(cols), version="v1p1").snapshot())
+    s.commit()
+    assert run.updated_count == 1
+    assert s.get(Classroom, cls1.id).grade == 5
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

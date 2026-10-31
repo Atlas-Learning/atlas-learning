@@ -128,6 +128,9 @@ class Role(str, enum.Enum):
     PARENT = "parent"             # lecture seule sur son enfant
     STUDENT = "student"           # ses propres activités
     LINGUIST = "linguist"         # staff Atlas GLOBAL : relit/valide l'arabe de la banque (pas tenant-scopé)
+    # Refonte, phase A (docs/refonte/02) :
+    DEPT_LEAD = "dept_lead"       # coordinateur maths : UNE école + une liste de niveaux (dept_lead_scope)
+    GROUP_ADMIN = "group_admin"   # admin de groupe scolaire : organisation entière (toutes ses écoles), lecture
 
 
 # --- Enums curriculum (Lot B, B2/B3 — DataModel §7 amendé D-B4) ---

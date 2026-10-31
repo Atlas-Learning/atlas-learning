@@ -221,10 +221,19 @@ def sync_directory(
 
         c = existing_classes.get(g.external_id)
         if c is None:
-            c = Classroom(school_id=school_id, name=g.name, external_ref=g.external_id)
+            c = Classroom(school_id=school_id, name=g.name, external_ref=g.external_id,
+                          grade=g.grade)
             s.add(c); s.flush(); res.created += 1
-        elif c.name != g.name or c.school_id != school_id or c.deleted_at is not None:
-            c.name, c.school_id, c.deleted_at = g.name, school_id, None; res.updated += 1
+        else:
+            changed = c.name != g.name or c.school_id != school_id or c.deleted_at is not None
+            if changed:
+                c.name, c.school_id, c.deleted_at = g.name, school_id, None
+            # Niveau : la source fait autorité quand elle le fournit ; sinon on garde la valeur
+            # saisie en admin (jamais écrasée par None).
+            if g.grade is not None and c.grade != g.grade:
+                c.grade = g.grade; changed = True
+            if changed:
+                res.updated += 1
         seen_class_refs.add(g.external_id)
         scope_class_ids.add(c.id)
 

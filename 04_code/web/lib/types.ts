@@ -4,7 +4,7 @@ export interface Me {
   user_id: string;
   roles: string[];
   schools: { id: string; name: string }[];
-  classrooms: { id: string; name: string; school_id: string }[];
+  classrooms: { id: string; name: string; school_id: string; grade?: number | null }[];
   child_student_ids: string[];
   own_student_id: string | null;
 }

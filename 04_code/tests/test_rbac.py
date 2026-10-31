@@ -1,6 +1,7 @@
 """Tests Epic 6 — RBAC (T6.2) + auth minimal (T6.3)."""
 import sys
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -116,6 +117,128 @@ def test_admin_role_bound_to_its_own_membership_scope():
         assert can_access_student(ctx, CHILD, s2.id, {other.id}) is False
         assert can_access_classroom(ctx, own.id, s2.id) is True        # garde l'accès enseignant
         assert can_access_student(ctx, CHILD, s2.id, {own.id}) is True
+
+
+# ---------- Refonte A1 — dept_lead (école + niveaux) et group_admin (organisation) ----------
+
+from src.models.org import DeptLeadScope  # noqa: E402
+from src.rbac.authz import can_manage_school, can_review_department  # noqa: E402
+
+CLASS_G4, CLASS_G5, CLASS_NOGRADE = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+
+
+def test_dept_lead_reads_only_classes_of_its_grades():
+    """Un dept_lead lit les classes de ses niveaux dans son école — et rien d'autre."""
+    lead = UserContext(uuid.uuid4(), roles=frozenset({Role.DEPT_LEAD}),
+                       dept_scopes=frozenset({(SCHOOL_A, 4)}),
+                       dept_classroom_ids=frozenset({CLASS_G4}))
+    assert can_access_classroom(lead, CLASS_G4, SCHOOL_A) is True
+    assert can_access_classroom(lead, CLASS_G5, SCHOOL_A) is False      # autre niveau, même école
+    assert can_access_classroom(lead, CLASS_1, SCHOOL_B) is False       # autre école
+    # élève : via une classe couverte seulement
+    assert can_access_student(lead, CHILD, SCHOOL_A, {CLASS_G4, CLASS_G5}) is True
+    assert can_access_student(lead, CHILD, SCHOOL_A, {CLASS_G5}) is False
+    # aucune portée école (overview/proof école = direction), aucune administration
+    assert can_access_school(lead, SCHOOL_A) is False
+    assert can_manage_school(lead, SCHOOL_A) is False
+    # revue de département : son niveau dans son école uniquement ; classe sans niveau → jamais
+    assert can_review_department(lead, SCHOOL_A, 4) is True
+    assert can_review_department(lead, SCHOOL_A, 5) is False
+    assert can_review_department(lead, SCHOOL_B, 4) is False
+    assert can_review_department(lead, SCHOOL_A, None) is False
+
+
+def test_group_admin_reads_all_schools_of_its_org_and_nothing_else():
+    ga = UserContext(uuid.uuid4(), roles=frozenset({Role.GROUP_ADMIN}),
+                     org_ids=frozenset({uuid.uuid4()}),
+                     group_school_ids=frozenset({SCHOOL_A}))
+    assert can_access_school(ga, SCHOOL_A) is True
+    assert can_access_school(ga, SCHOOL_B) is False                     # école hors organisation
+    assert can_manage_school(ga, SCHOOL_A) is False                     # lecture, pas d'administration
+    # aucune portée classe ni élève nominatif (matrice d'accès : la direction voit des écoles)
+    assert can_access_classroom(ga, CLASS_1, SCHOOL_A) is False
+    assert can_access_student(ga, CHILD, SCHOOL_A, {CLASS_1}) is False
+    assert can_review_department(ga, SCHOOL_A, 4) is False
+
+
+def test_build_user_context_resolves_dept_lead_scope_and_group_schools():
+    engine = make_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    s = Session(engine)
+    from src.models.org import Classroom, Organization
+    org, other_org = Organization(name="Groupe"), Organization(name="Autre")
+    s.add_all([org, other_org]); s.flush()
+    s1 = School(name="S1", organization_id=org.id)
+    s2 = School(name="S2", organization_id=org.id)
+    s3 = School(name="S3", organization_id=other_org.id)
+    gone = School(name="fermée", organization_id=org.id, deleted_at=datetime.now(timezone.utc))
+    s.add_all([s1, s2, s3, gone]); s.flush()
+    g4a = Classroom(school_id=s1.id, name="4A", grade=4)
+    g4b = Classroom(school_id=s1.id, name="4B", grade=4)
+    g5 = Classroom(school_id=s1.id, name="5A", grade=5)
+    nograde = Classroom(school_id=s1.id, name="?", grade=None)
+    g4_other_school = Classroom(school_id=s2.id, name="4C", grade=4)
+    g4_deleted = Classroom(school_id=s1.id, name="4Z", grade=4, deleted_at=datetime.now(timezone.utc))
+    s.add_all([g4a, g4b, g5, nograde, g4_other_school, g4_deleted]); s.flush()
+
+    lead = AppUser(email="lead@x.io"); ga = AppUser(email="ga@x.io"); s.add_all([lead, ga]); s.flush()
+    m = Membership(user_id=lead.id, role=Role.DEPT_LEAD, school_id=s1.id); s.add(m); s.flush()
+    s.add_all([DeptLeadScope(membership_id=m.id, grade=4), DeptLeadScope(membership_id=m.id, grade=6)])
+    s.add(Membership(user_id=ga.id, role=Role.GROUP_ADMIN, organization_id=org.id))
+    s.commit()
+
+    ctx = build_user_context(s, lead.id)
+    assert ctx.dept_scopes == {(s1.id, 4), (s1.id, 6)}
+    # classes vivantes de SON école aux niveaux couverts : ni 5A, ni sans niveau, ni l'autre
+    # école, ni la classe supprimée
+    assert ctx.dept_classroom_ids == {g4a.id, g4b.id}
+    assert ctx.school_ids == frozenset()            # jamais de portée admin
+    assert ctx.classroom_ids == frozenset()         # pas une portée enseignant non plus
+
+    ctx = build_user_context(s, ga.id)
+    assert ctx.group_school_ids == {s1.id, s2.id}   # toutes les écoles vivantes de l'org, pas S3
+    assert can_access_school(ctx, s3.id) is False
+    assert ctx.school_ids == frozenset()
+
+
+def test_dept_lead_without_scope_rows_has_no_access():
+    engine = make_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    s = Session(engine)
+    from src.models.org import Classroom
+    sch = School(name="S"); s.add(sch); s.flush()
+    cls = Classroom(school_id=sch.id, name="4A", grade=4); s.add(cls); s.flush()
+    lead = AppUser(email="lead@x.io"); s.add(lead); s.flush()
+    s.add(Membership(user_id=lead.id, role=Role.DEPT_LEAD, school_id=sch.id))   # aucun niveau
+    s.commit()
+    ctx = build_user_context(s, lead.id)
+    assert ctx.dept_scopes == frozenset() and ctx.dept_classroom_ids == frozenset()
+    assert can_access_classroom(ctx, cls.id, sch.id) is False
+
+
+def test_group_admin_scope_not_widened_by_other_memberships():
+    """GROUP_ADMIN de l'org A + IT_ADMIN de l'org B : les écoles de B ne deviennent pas lisibles
+    comme group_admin, et l'école d'une membership teacher ne reçoit aucune portée."""
+    engine = make_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    s = Session(engine)
+    from src.models.org import Classroom, Organization
+    oa, ob = Organization(name="A"), Organization(name="B"); s.add_all([oa, ob]); s.flush()
+    sa_, sb = School(name="SA", organization_id=oa.id), School(name="SB", organization_id=ob.id)
+    s.add_all([sa_, sb]); s.flush()
+    cls_b = Classroom(school_id=sb.id, name="4A", grade=4); s.add(cls_b); s.flush()
+    u = AppUser(email="u@x.io"); s.add(u); s.flush()
+    s.add_all([
+        Membership(user_id=u.id, role=Role.GROUP_ADMIN, organization_id=oa.id),
+        Membership(user_id=u.id, role=Role.IT_ADMIN, organization_id=ob.id),   # org-only, sans école
+        Membership(user_id=u.id, role=Role.TEACHER, school_id=sb.id),
+    ])
+    s.commit()
+    ctx = build_user_context(s, u.id)
+    assert ctx.group_school_ids == {sa_.id}
+    assert can_access_school(ctx, sa_.id) is True
+    assert can_access_school(ctx, sb.id) is False
+    assert can_access_classroom(ctx, cls_b.id, sb.id) is False
 
 
 # ---------- T6.3 auth (jetons de session signés — SSO uniquement) ----------

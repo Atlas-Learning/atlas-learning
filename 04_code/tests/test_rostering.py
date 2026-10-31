@@ -412,6 +412,27 @@ def test_default_classifier_uses_orgunit_hints():
     assert classify_role(DirUser("4", "d@x.io", "D", "x", is_admin=True), ou_by_id) == Role.IT_ADMIN
 
 
+def test_admin_entered_grade_survives_source_without_grade():
+    """Refonte A1 : une source qui ne fournit pas de niveau (Google) n'efface jamais un niveau
+    saisi en admin ; une source qui le fournit fait autorité."""
+    s, org = _setup()
+    sync_directory(s, org, _base_snapshot(), classifier=_classifier, now=NOW); s.commit()
+    cls = s.execute(select(Classroom).where(Classroom.external_ref == "g_4a")).scalar_one()
+    assert cls.grade is None
+    cls.grade = 4; s.commit()                                   # saisie admin
+
+    run = sync_directory(s, org, _base_snapshot(), classifier=_classifier, now=NOW); s.commit()
+    assert run.updated_count == 0
+    assert s.get(Classroom, cls.id).grade == 4                  # conservé
+
+    snap = _base_snapshot()
+    snap = DirectorySnapshot(snap.org_units, snap.users, [DirGroup("g_4a", "Grade 4 A", grade=5)],
+                             snap.memberships)
+    run = sync_directory(s, org, snap, classifier=_classifier, now=NOW); s.commit()
+    assert run.updated_count == 1
+    assert s.get(Classroom, cls.id).grade == 5                  # la source fait autorité
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

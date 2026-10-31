@@ -41,6 +41,9 @@ class DirUser:
 class DirGroup:
     external_id: str                 # id/email du groupe (= une classe)
     name: str
+    # Niveau (grade) de la classe quand la source l'expose (OneRoster `grades`). None = la
+    # source ne le fournit pas : le moteur ne touche PAS à un niveau déjà saisi en admin.
+    grade: Optional[int] = None
 
 
 @dataclass(frozen=True)

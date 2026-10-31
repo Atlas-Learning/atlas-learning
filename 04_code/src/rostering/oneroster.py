@@ -44,6 +44,27 @@ _ROLE_MAP = {
 _ACTIVE = ("active", "", None)
 
 
+def grade_from_codes(codes) -> Optional[int]:
+    """Niveau Atlas (int) depuis les codes de niveau OneRoster d'une classe (`grades`).
+
+    Codes CEDS : "KG" (ou "K") = 0, "01"…"13" = 1…13. Multi-niveaux ou code non numérique
+    (PK, IT, PS, UG…) → None : on n'invente pas un niveau. Les écoles en curriculum anglais
+    (Year N) ne passent pas par ce code : [À CLARIFIER] Q6 Year ↔ Grade."""
+    if not codes:
+        return None
+    if isinstance(codes, str):
+        codes = [codes]
+    codes = [str(c).strip().upper() for c in codes if str(c).strip()]
+    if len(codes) != 1:
+        return None
+    code = codes[0]
+    if code in ("K", "KG"):
+        return 0
+    if code.isdigit() and 1 <= int(code) <= 13:
+        return int(code)
+    return None
+
+
 class OneRosterAdapter:
     """Lit une source OneRoster REST et la normalise en `DirectorySnapshot`."""
 
@@ -134,7 +155,8 @@ class OneRosterAdapter:
             ))
 
         groups = [
-            DirGroup(external_id=c["sourcedId"], name=c.get("title") or c.get("classCode", ""))
+            DirGroup(external_id=c["sourcedId"], name=c.get("title") or c.get("classCode", ""),
+                     grade=grade_from_codes(c.get("grades")))
             for c in self._collection("classes") if self._is_active(c)
         ]
         group_refs = {g.external_id for g in groups}

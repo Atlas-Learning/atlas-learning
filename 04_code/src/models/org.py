@@ -42,6 +42,11 @@ class Classroom(Base):
     )
     name: Mapped[str] = mapped_column(String)
     external_ref: Mapped[Optional[str]] = mapped_column(String, index=True, default=None)  # group id
+    # Niveau (grade) de la classe — rempli par le roster quand la source l'expose (OneRoster
+    # `grades`), sinon saisi en admin (PATCH /classrooms/{id}/grade). Pilote la portée du
+    # `dept_lead` (dept_lead_scope). [À CLARIFIER] Year (UK) ↔ Grade : aucune conversion
+    # ici (Q6 de docs/refonte/05-questions-ouvertes.md).
+    grade: Mapped[Optional[int]] = mapped_column(Integer, index=True, default=None)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
 
 
@@ -71,6 +76,20 @@ class Membership(Base):
     school_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         ForeignKey("school.id", ondelete="CASCADE"), default=None, index=True
     )
+
+
+class DeptLeadScope(Base):
+    """Niveaux couverts par une membership `dept_lead`.
+
+    Un coordinateur couvre une ou plusieurs années d'UNE école : la membership porte
+    `school_id`, cette table porte les grades. Sa portée effective = les classes vivantes de
+    cette école dont `Classroom.grade` est dans la liste (résolue par `build_user_context`).
+    """
+    __tablename__ = "dept_lead_scope"
+    membership_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("membership.id", ondelete="CASCADE"), primary_key=True
+    )
+    grade: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class TeacherClassroom(Base):

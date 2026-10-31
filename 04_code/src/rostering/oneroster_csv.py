@@ -53,6 +53,8 @@ def _classes(rows: List[Dict[str, str]]) -> List[dict]:
         "sourcedId": r["sourcedId"], "status": r.get("status", "active"),
         "title": r.get("title", ""),
         "school": {"sourcedId": r.get("schoolSourcedId", "")},
+        # colonne optionnelle `grades` (codes CEDS, séparés comme orgSourcedIds)
+        "grades": [g for g in _SPLIT.split((r.get("grades") or "").strip()) if g],
     } for r in rows]
 
 

@@ -82,6 +82,7 @@ from src.rbac.authz import (
     can_access_classroom,
     can_access_school,
     can_access_student,
+    can_manage_school,
     can_review_arabic,
 )
 
@@ -996,17 +997,25 @@ def me(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
     """Identité + périmètre de l'utilisateur courant — pilote la navigation du front."""
     from src.models.measurement import School
 
+    def _cls_payload(cls: Classroom) -> dict:
+        return {"id": str(cls.id), "name": cls.name, "school_id": str(cls.school_id),
+                "grade": cls.grade}
+
     classrooms = []
-    for cid in ctx.classroom_ids:
+    # enseignant : ses classes ; dept_lead : les classes de ses niveaux (refonte A1)
+    own_class_ids = list(ctx.classroom_ids) + [c for c in ctx.dept_classroom_ids
+                                               if c not in ctx.classroom_ids]
+    for cid in own_class_ids:
         cls = s.get(Classroom, cid)
         if cls is not None and cls.deleted_at is None:
-            classrooms.append({"id": str(cls.id), "name": cls.name, "school_id": str(cls.school_id)})
+            classrooms.append(_cls_payload(cls))
 
     schools = []
-    seen = list(ctx.school_ids)
     # admin : écoles de son périmètre (en tête — le front route l'admin sur schools[0]) ;
-    # enseignant : écoles de ses classes
-    for cid in ctx.classroom_ids:
+    # group_admin : toutes les écoles de son organisation ; enseignant/dept_lead : écoles de
+    # ses classes
+    seen = list(ctx.school_ids) + [x for x in ctx.group_school_ids if x not in ctx.school_ids]
+    for cid in own_class_ids:
         cls = s.get(Classroom, cid)
         if cls is not None and cls.deleted_at is None and cls.school_id not in seen:
             seen.append(cls.school_id)
@@ -1015,10 +1024,11 @@ def me(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
         if sch is not None and sch.deleted_at is None:
             schools.append({"id": str(sch.id), "name": sch.name})
             for cls in s.execute(active(Classroom).where(Classroom.school_id == sch.id)).scalars():
+                # Seules les classes réellement accessibles : un group_admin voit l'école,
+                # pas ses classes (aucune portée élève).
                 if not any(c["id"] == str(cls.id) for c in classrooms) \
-                        and can_access_school(ctx, sch.id):
-                    classrooms.append({"id": str(cls.id), "name": cls.name,
-                                       "school_id": str(cls.school_id)})
+                        and can_access_classroom(ctx, cls.id, sch.id):
+                    classrooms.append(_cls_payload(cls))
 
     return {
         "user_id": str(ctx.user_id),
@@ -1170,6 +1180,29 @@ def classroom_students(classroom_id: uuid.UUID, ctx: UserContext = Depends(get_c
         raise HTTPException(status_code=403, detail="accès refusé à cette classe")
     return {"classroom_id": str(classroom_id), "name": cls.name,
             "students": list_students(s, classroom_id)}
+
+
+class ClassroomGradeIn(BaseModel):
+    grade: Optional[int] = None    # None = niveau inconnu (la classe sort de toute portée dept_lead)
+
+
+@app.patch("/classrooms/{classroom_id}/grade")
+def set_classroom_grade(classroom_id: uuid.UUID, body: ClassroomGradeIn,
+                        ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """Niveau d'une classe, saisi en admin quand le roster ne le fournit pas (refonte A1).
+
+    Réservé aux admins de l'école (it/ped) et au super admin : il pilote la portée des
+    coordinateurs (dept_lead_scope), un enseignant ou un dept_lead ne le modifie pas."""
+    cls = _get_live_classroom(s, classroom_id)
+    if not can_manage_school(ctx, cls.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette classe")
+    if body.grade is not None and not (0 <= body.grade <= 13):
+        raise HTTPException(status_code=400, detail="grade attendu entre 0 (KG) et 13")
+    cls.grade = body.grade
+    log_action(s, action="classroom.set_grade", school_id=cls.school_id, user_id=ctx.user_id,
+               resource_type="classroom", resource_id=cls.id, details={"grade": body.grade})
+    s.commit()
+    return {"classroom_id": str(cls.id), "grade": cls.grade}
 
 
 @app.get("/students/{student_id}/profile")

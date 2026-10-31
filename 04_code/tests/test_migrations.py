@@ -303,6 +303,67 @@ def test_0019_defauts_sur_lignes_existantes_et_reversibilite():
         os.unlink(tmp.name)
 
 
+def test_0021_0022_roles_refonte_et_portee_dept_lead_reversibles():
+    # Refonte A1 : 0021 ajoute dept_lead/group_admin à l'enum `role` (no-op SQLite, ALTER TYPE
+    # Postgres) ; 0022 ajoute classroom.grade (indexé) et la table dept_lead_scope. On vérifie
+    # que les nouvelles valeurs et colonnes s'écrivent, puis que downgrade → 0020 retire tout
+    # le schéma de 0022 et que le re-upgrade repasse. La cohérence colonne à colonne avec les
+    # modèles est couverte par test_0019_schema_from_scratch_coherent_avec_les_modeles.
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "head")
+        engine = sa.create_engine(url)
+        insp = sa.inspect(engine)
+        assert "dept_lead_scope" in insp.get_table_names()
+        assert any(c["name"] == "grade" and c["nullable"] for c in insp.get_columns("classroom"))
+        assert any(ix["name"] == "ix_classroom_grade" and ix["column_names"] == ["grade"]
+                   for ix in insp.get_indexes("classroom"))
+        assert insp.get_pk_constraint("dept_lead_scope")["constrained_columns"] == ["membership_id", "grade"]
+        fks = insp.get_foreign_keys("dept_lead_scope")
+        assert len(fks) == 1 and fks[0]["referred_table"] == "membership" \
+            and fks[0]["options"] == {"ondelete": "CASCADE"}
+        with engine.begin() as conn:
+            uid, mid, school = _hex(uuid.uuid4()), _hex(uuid.uuid4()), _hex(uuid.uuid4())
+            conn.execute(sa.text("INSERT INTO school (id, name) VALUES (:id, 'S')"), {"id": school})
+            conn.execute(sa.text(
+                "INSERT INTO app_user (id, email, is_active) VALUES (:id, 'lead@atlas.io', 1)"), {"id": uid})
+            conn.execute(sa.text(
+                "INSERT INTO membership (id, user_id, role, school_id) VALUES (:id, :u, 'dept_lead', :s)"
+            ), {"id": mid, "u": uid, "s": school})
+            conn.execute(sa.text(
+                "INSERT INTO membership (id, user_id, role) VALUES (:id, :u, 'group_admin')"
+            ), {"id": _hex(uuid.uuid4()), "u": uid})
+            conn.execute(sa.text(
+                "INSERT INTO dept_lead_scope (membership_id, grade) VALUES (:m, 4)"), {"m": mid})
+            conn.execute(sa.text(
+                "INSERT INTO classroom (id, school_id, name, grade) VALUES (:id, :s, '4A', 4)"
+            ), {"id": _hex(uuid.uuid4()), "s": school})
+        with engine.connect() as conn:
+            roles = set(conn.execute(sa.text("SELECT role FROM membership")).scalars())
+            assert roles == {"dept_lead", "group_admin"}
+            assert conn.execute(sa.text("SELECT grade FROM classroom")).scalar_one() == 4
+
+        command.downgrade(cfg, "0020_enrich_kind")
+        insp = sa.inspect(engine)   # inspecteur NEUF
+        assert "dept_lead_scope" not in insp.get_table_names()
+        assert not any(c["name"] == "grade" for c in insp.get_columns("classroom"))
+        assert not any(ix["name"] == "ix_classroom_grade" for ix in insp.get_indexes("classroom"))
+        command.upgrade(cfg, "head")
+        insp = sa.inspect(engine)
+        assert "dept_lead_scope" in insp.get_table_names()
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

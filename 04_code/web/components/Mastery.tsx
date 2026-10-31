@@ -67,8 +67,8 @@ export function CompetencyCard({ c }: { c: CompetencyMastery }) {
           <p className="truncate text-sm font-medium text-sand-800">{label(c, lang)}</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-sand-400">
             <span data-ltr>{c.code.replace("MATH.", "")}</span>
-            {/* B4 : code standard si vue curriculaire — absent en vue ATLAS. */}
-            <StandardBadge standard={c.standard} />
+            {/* B4 : code standard si vue curriculaire — absent en vue ATLAS. C3 : libellé visible. */}
+            <StandardBadge standard={c.standard} showWording />
           </p>
         </div>
         <span className={cx("mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full", style.dot)} title={stateLabel} />

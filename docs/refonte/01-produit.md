@@ -53,6 +53,7 @@ Le détail des champs est dans `03-modele-de-donnees.md`.
 - Le graphe est unique et neutre. Un curriculum est une correspondance (crosswalk) : attendu officiel ↔ compétences du graphe, avec `alignment_type` (EXACT, PARTIAL, BROADER, PREREQ, ENRICH) et `confidence` (H, M, L).
 - Le super admin peut importer n'importe quel curriculum, le mapper, contrôler la couverture et le publier. Une école choisit son curriculum ; l'UI affiche alors ses codes.
 - Le vocabulaire affiché suit l'alignement : « aligned with » (EXACT), « covers part of » (PARTIAL), « prerequisite of » (PREREQ), « taught earlier than in your curriculum » (ENRICH), « part of » (BROADER).
+  Livré (C3) dans `src/api/views_service.py` (`alignment_wording`). Nuance conservée de la revue 2026-07-12 : un ENRICH porte un `enrich_kind` ; `grade` donne la formule ci-dessus (Atlas mesure un niveau plus tôt), `requirement` (exigence absente du curriculum) garde « beyond … expectations ». [À CLARIFIER] si une seule formule doit rester. MoE UAE n'ayant pas de codes, son libellé nomme le domaine (« part of Numbers & Operations … »). Confiance M → suffixe « (indicative mapping) ».
 - Deux sources d'items : gabarits déterministes et écoles (phase E). Un item d'école sert tout de suite en classe mais n'entre dans la mesure qu'après assez de réponses et une revue.
 - Une faute dans un item généré se corrige au gabarit. Si énoncé ou réponse change, l'item repart en nouvelle version ; ses anciennes réponses ne servent plus à sa calibration.
 

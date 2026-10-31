@@ -49,6 +49,8 @@ function navFor(me: Me): NavItem[] {
     items.push({ href: "/ops/review", key: "nav.review" });
     items.push({ href: "/ops/lessons", key: "nav.lessons" });
   }
+  // Refonte C3 : import et mapping des curriculums — opération Atlas (Q14), super admin seul.
+  if (r.has("super_admin")) items.push({ href: "/ops/curricula", key: "nav.curricula" });
   if (r.has("linguist")) items.push({ href: "/linguist", key: "nav.linguist" });
   if (r.has("student") && me.own_student_id) items.push({ href: "/student", key: "nav.session" });
   if (r.has("parent") && me.child_student_ids[0])

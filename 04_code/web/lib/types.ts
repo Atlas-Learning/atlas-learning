@@ -555,3 +555,73 @@ export interface NextItem {
   content_ar?: ItemContent | null;
   was_correct?: boolean; // présent seulement après soumission d'une réponse
 }
+
+// Refonte C2/C3 — curriculums dynamiques (écran O3, super admin).
+export interface CurriculumFrameworkRow {
+  id: string;
+  key: string;
+  name_en: string;
+  name_ar: string;
+  country: string | null;
+  status: "draft" | "published";
+  imported_at: string | null;
+  published_at: string | null;
+  source_note: string | null;
+  n_standards: number;
+  n_organizations: number;
+}
+export type AlignmentType = "EXACT" | "PARTIAL" | "BROADER" | "PREREQ" | "ENRICH";
+export type MappingConfidence = "H" | "M" | "L";
+export interface CurriculumMappingRow {
+  competency_id: string;
+  competency_code: string | null;
+  competency_label_en: string | null;
+  competency_label_ar: string | null;
+  competency_grade: number | null;
+  alignment_type: AlignmentType;
+  confidence: MappingConfidence;
+  enrich_kind: "grade" | "requirement" | null;
+  note: string | null;
+  suggested: boolean;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  weight_version: number;
+  preview_en: string;
+  preview_ar: string;
+}
+export type StandardState = "reviewed" | "suggested" | "unmapped";
+export interface CurriculumStandardRow {
+  id: string;
+  code: string;
+  label_en: string;
+  label_ar: string;
+  grade_hint: string | null;
+  state: StandardState;
+  no_match: boolean;
+  mappings: CurriculumMappingRow[];
+}
+export interface FrameworkCoverageCounts {
+  standards: number;
+  reviewed: number;
+  suggested: number;
+  unmapped: number;
+  competencies_mapped: number;
+  competencies_total: number;
+}
+export interface FrameworkCoverage {
+  framework_id: string;
+  key: string;
+  status: "draft" | "published";
+  counts: FrameworkCoverageCounts;
+  publishable: boolean;
+  standards: CurriculumStandardRow[];
+}
+export type CurriculumDetail = CurriculumFrameworkRow & { coverage: FrameworkCoverage };
+export interface GraphNode {
+  id: string;
+  code: string;
+  label_en: string;
+  label_ar: string;
+  grade: number;
+  strand: string;
+}

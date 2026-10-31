@@ -237,7 +237,7 @@ def test_suggested_lines_are_never_served_to_schools():
     by_code = {c["code"]: c for c in prof["competencies"]}
     assert by_code["M.ADD"]["standard"]["code"] == "IB.4.F.1"
     assert by_code["M.ADD"]["standard"]["framework"] == "IB_PYP"
-    assert by_code["M.ADD"]["standard"]["wording_en"] == "aligned to IB.4.F.1"
+    assert by_code["M.ADD"]["standard"]["wording_en"] == "aligned with IB.4.F.1"
     assert by_code["M.CMP"]["standard"] is None            # encore suggérée
     _teardown()
 
@@ -347,7 +347,7 @@ def test_publish_refused_until_every_standard_reviewed_then_unpublish_falls_back
     assert client.get("/admin/curriculum", headers=_auth(ids["ped"])).json()["curriculum_view"] == "IB_PYP"
     prof = client.get(f"/students/{ids['student']}/profile", headers=_auth(ids["teacher"])).json()
     by_code = {c["code"]: c for c in prof["competencies"]}
-    assert by_code["M.CMP"]["standard"]["wording_en"] == "aligned to IB.4.F.2 (indicative mapping)"
+    assert by_code["M.CMP"]["standard"]["wording_en"] == "aligned with IB.4.F.2 (indicative mapping)"
     assert by_code["M.EQV"]["standard"] is None
 
     # dépublication → retour à la vue neutre, sans toucher au choix de l'organisation
@@ -393,4 +393,49 @@ def test_delete_framework_guards_and_cascade():
     assert s.execute(select(CurriculumStandard).where(CurriculumStandard.framework_id == fw_id)).first() is None
     assert s.execute(select(CompetencyCurriculumMap)).first() is None        # cascade attendus → lignes
     assert client.delete(f"/ops/curricula/{fw_id}", headers=H).status_code == 404
+    _teardown()
+
+
+# ---------- C3 : aperçu « ce que voit l'école », vocabulaire fermé côté serveur ----------
+
+def test_preview_wording_follows_spec_vocabulary():
+    client, ids, s = _setup()
+    body = _import(client, ids)
+    fw_id = body["id"]
+    H = _auth(ids["sup"])
+    cov = client.get(f"/ops/curricula/{fw_id}/mappings", headers=H).json()
+    f1 = _std_id(cov, "IB.4.F.1")
+
+    def pv(**q):
+        return client.get(f"/ops/curricula/{fw_id}/preview", params={"standard_id": f1, **q}, headers=H)
+
+    expected = {
+        ("EXACT", "H", None): ("aligned with IB.4.F.1", "متوافق مع IB.4.F.1"),
+        ("PARTIAL", "H", None): ("covers part of IB.4.F.1", "يغطي جزءًا من IB.4.F.1"),
+        ("BROADER", "H", None): ("part of IB.4.F.1", "ضمن IB.4.F.1"),
+        ("PREREQ", "H", None): ("prerequisite of IB.4.F.1", "متطلب سابق لـ IB.4.F.1"),
+        ("ENRICH", "H", "grade"): ("taught earlier than in your curriculum (IB.4.F.1)", "يُدرَّس قبل موعده في منهجكم (IB.4.F.1)"),
+        ("ENRICH", "H", "requirement"): ("beyond IB.4.F.1 expectations", "يتجاوز متطلبات IB.4.F.1"),
+        ("EXACT", "M", None): ("aligned with IB.4.F.1 (indicative mapping)", "متوافق مع IB.4.F.1 (تعيين استرشادي)"),
+    }
+    for (at, conf, ek), (en, ar) in expected.items():
+        q = {"alignment_type": at, "confidence": conf}
+        if ek:
+            q["enrich_kind"] = ek
+        r = pv(**q)
+        assert r.status_code == 200, r.text
+        assert (r.json()["preview_en"], r.json()["preview_ar"]) == (en, ar), (at, conf, ek)
+        assert "indicative mapping" not in r.json()["preview_ar"]          # jamais d'anglais dans la chaîne RTL
+    assert pv(alignment_type="ENRICH", confidence="H").status_code == 400
+    assert pv(alignment_type="NOPE", confidence="H").status_code == 400
+    assert client.get(f"/ops/curricula/{fw_id}/preview", params={"standard_id": str(uuid.uuid4()), "alignment_type": "EXACT",
+                      "confidence": "H"}, headers=H).status_code == 400
+    assert client.get(f"/ops/curricula/{fw_id}/preview", params={"standard_id": f1, "alignment_type": "EXACT",
+                      "confidence": "H"}, headers=_auth(ids["ped"])).status_code == 403
+    # l'aperçu enregistré (mapping_payload) et l'aperçu à blanc viennent du même helper
+    client.put(f"/ops/curricula/{fw_id}/mappings", json={"standard_id": f1, "competency_id": str(ids["add"]),
+                                                         "alignment_type": "PREREQ", "confidence": "H"}, headers=H)
+    cov = client.get(f"/ops/curricula/{fw_id}/mappings", headers=H).json()
+    m = next(m for m in next(x for x in cov["standards"] if x["code"] == "IB.4.F.1")["mappings"] if m["competency_code"] == "M.ADD")
+    assert m["preview_en"] == "prerequisite of IB.4.F.1"
     _teardown()

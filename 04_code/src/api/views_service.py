@@ -9,7 +9,7 @@ import uuid
 from collections import Counter
 from datetime import datetime, timedelta
 from statistics import mean
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -56,25 +56,28 @@ def _is_mastered(ability_elo: float, n_direct: int) -> bool:
 # ---------------------------------------------------------------------------
 
 _ALIGNMENT_WORDING_EN = {
-    AlignmentType.EXACT: "aligned to {code}",
+    # Refonte C3 (01-produit § Curriculums) : vocabulaire fermé par type d'alignement.
+    AlignmentType.EXACT: "aligned with {code}",
     AlignmentType.PARTIAL: "covers part of {code}",
-    AlignmentType.BROADER: "one of several skills within {code}",
-    AlignmentType.PREREQ: "building block for {code}",
+    AlignmentType.BROADER: "part of {code}",
+    AlignmentType.PREREQ: "prerequisite of {code}",
+    # ENRICH-d'exigence (enrich_kind='requirement') : conservé de la revue 2026-07-12 (M-4), le
+    # spec ne distingue pas les deux ENRICH. [À CLARIFIER] si une seule formule doit rester.
     AlignmentType.ENRICH: "beyond {code} expectations",
 }
 _ALIGNMENT_WORDING_AR = {
     AlignmentType.EXACT: "متوافق مع {code}",
     AlignmentType.PARTIAL: "يغطي جزءًا من {code}",
-    AlignmentType.BROADER: "إحدى مهارات {code}",
-    AlignmentType.PREREQ: "لبنة أساسية لـ {code}",
+    AlignmentType.BROADER: "ضمن {code}",
+    AlignmentType.PREREQ: "متطلب سابق لـ {code}",
     AlignmentType.ENRICH: "يتجاوز متطلبات {code}",
 }
 # ENRICH-de-grade (M-4) : la compétence est mesurée UN GRADE PLUS TÔT que le standard —
 # c'est un argument (« on mesure dès G4 ce que votre programme demande en G5 »), pas un
 # « hors programme ». Wording distinct de l'ENRICH-d'exigence (ci-dessus) ; sélectionné
-# quand enrich_kind == 'grade'.
-_ENRICH_GRADE_WORDING_EN = "taught earlier than {code}"
-_ENRICH_GRADE_WORDING_AR = "يُدرَّس قبل {code}"
+# quand enrich_kind == 'grade'. Formule du spec 01 : « taught earlier than in your curriculum ».
+_ENRICH_GRADE_WORDING_EN = "taught earlier than in your curriculum ({code})"
+_ENRICH_GRADE_WORDING_AR = "يُدرَّس قبل موعده في منهجكم ({code})"   # à relire (07-tests-beta)
 # Confiance M → mapping indicatif tant que non fiabilisé (B7). Suffixe par langue
 # (revue 2026-07-12, MAJ-2 : un suffixe EN concaténé au wording AR injectait de
 # l'anglais LTR dans une chaîne RTL — visible sur 100 % des badges MoE, tous en M).
@@ -88,6 +91,25 @@ _INDICATIVE_SUFFIX_AR = " (تعيين استرشادي)"  # à confirmer avec la
 # déjà toute l'information affichable.
 _MOE_WORDING_EN = "part of {label}"
 _MOE_WORDING_AR = "ضمن {label}"
+
+
+def alignment_wording(std: CurriculumStandard, alignment_type: AlignmentType, confidence: MappingConfidence,
+                      enrich_kind: Optional[str]) -> Tuple[str, str]:
+    """(wording_en, wording_ar) que verra l'école pour une ligne de mapping — SEULE source du
+    vocabulaire (vues côté école et aperçu de l'éditeur O3)."""
+    if std.framework_key == MOE_KEY:
+        wording_en = _MOE_WORDING_EN.format(label=std.label_en)
+        wording_ar = _MOE_WORDING_AR.format(label=std.label_ar)
+    elif alignment_type == AlignmentType.ENRICH and enrich_kind == "grade":
+        wording_en = _ENRICH_GRADE_WORDING_EN.format(code=std.code)
+        wording_ar = _ENRICH_GRADE_WORDING_AR.format(code=std.code)
+    else:
+        wording_en = _ALIGNMENT_WORDING_EN[alignment_type].format(code=std.code)
+        wording_ar = _ALIGNMENT_WORDING_AR[alignment_type].format(code=std.code)
+    if confidence == MappingConfidence.M:
+        wording_en += _INDICATIVE_SUFFIX_EN
+        wording_ar += _INDICATIVE_SUFFIX_AR
+    return wording_en, wording_ar
 
 # ordre d'affichage quand une compétence mappe plusieurs standards : le plus
 # spécifique d'abord (EXACT), l'enrichissement en dernier
@@ -130,20 +152,7 @@ def curriculum_view_of_school(s: Session, school_id) -> str:
 
 def _standard_payload(m: CompetencyCurriculumMap, std: CurriculumStandard) -> dict:
     is_moe = std.framework_key == MOE_KEY
-    if is_moe:
-        # jamais de code affiché ; wording nomme le domaine, pas la clé technique
-        wording_en = _MOE_WORDING_EN.format(label=std.label_en)
-        wording_ar = _MOE_WORDING_AR.format(label=std.label_ar)
-    elif m.alignment_type == AlignmentType.ENRICH and m.enrich_kind == "grade":
-        # ENRICH-de-grade : « taught earlier than » plutôt que « beyond … expectations »
-        wording_en = _ENRICH_GRADE_WORDING_EN.format(code=std.code)
-        wording_ar = _ENRICH_GRADE_WORDING_AR.format(code=std.code)
-    else:
-        wording_en = _ALIGNMENT_WORDING_EN[m.alignment_type].format(code=std.code)
-        wording_ar = _ALIGNMENT_WORDING_AR[m.alignment_type].format(code=std.code)
-    if m.confidence == MappingConfidence.M:
-        wording_en += _INDICATIVE_SUFFIX_EN
-        wording_ar += _INDICATIVE_SUFFIX_AR
+    wording_en, wording_ar = alignment_wording(std, m.alignment_type, m.confidence, m.enrich_kind)
     return {
         "framework": std.framework_key,
         "code": std.code,               # clé technique (identité), jamais garantie affichable
@@ -702,7 +711,7 @@ def referentiel_graph(s: Session) -> dict:
     """Graphe de compétences (nœuds + arêtes typées) — pour la viz du diagnostic causal."""
     nodes, edges = [], []
     for c in s.execute(select(Competency)).scalars():
-        nodes.append({"code": c.code, "label_en": c.label_en, "label_ar": c.label_ar,
+        nodes.append({"id": str(c.id), "code": c.code, "label_en": c.label_en, "label_ar": c.label_ar,
                       "grade": c.grade, "strand": ".".join(c.code.split(".")[:3])})
     code_of = {c.id: c.code for c in s.execute(select(Competency)).scalars()}
     for e in s.execute(select(CompetencyPrerequisite)).scalars():

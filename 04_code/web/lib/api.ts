@@ -19,6 +19,10 @@ import type {
   ClassDigest,
   ClassGap,
   CurriculumSettings,
+  FrameworkCoverage,
+  CurriculumDetail,
+  CurriculumFrameworkRow,
+  GraphNode,
   LinguistItem,
   LinguistQueue,
   Me,
@@ -268,6 +272,37 @@ export const api = {
     }),
 
   // — File de revue de la banque (refonte A4) : relecteur de contenu, super admin —
+  // — Curriculums dynamiques (refonte C2/C3, écran O3) : super admin —
+  competencies: () => request<{ nodes: GraphNode[] }>("/competencies"),
+  opsCurricula: () => request<{ frameworks: CurriculumFrameworkRow[] }>("/ops/curricula"),
+  opsCurriculaImport: (body: Record<string, unknown>) =>
+    request<CurriculumFrameworkRow & { import: Record<string, number | boolean> }>("/ops/curricula", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  opsCurriculum: (id: string) => request<CurriculumDetail>(`/ops/curricula/${id}`),
+  opsCurriculumSetMapping: (id: string, body: Record<string, unknown>) =>
+    request<FrameworkCoverage>(`/ops/curricula/${id}/mappings`, { method: "PUT", body: JSON.stringify(body) }),
+  opsCurriculumDeleteMapping: (id: string, standard_id: string, competency_id: string) =>
+    request<FrameworkCoverage>(`/ops/curricula/${id}/mappings`, {
+      method: "DELETE",
+      body: JSON.stringify({ standard_id, competency_id }),
+    }),
+  opsCurriculumNoMatch: (id: string, standard_id: string, no_match: boolean) =>
+    request<FrameworkCoverage>(`/ops/curricula/${id}/no-match`, {
+      method: "POST",
+      body: JSON.stringify({ standard_id, no_match }),
+    }),
+  opsCurriculumPreview: (id: string, q: { standard_id: string; alignment_type: string; confidence: string; enrich_kind?: string | null }) => {
+    const params = new URLSearchParams({ standard_id: q.standard_id, alignment_type: q.alignment_type, confidence: q.confidence });
+    if (q.enrich_kind) params.set("enrich_kind", q.enrich_kind);
+    return request<{ preview_en: string; preview_ar: string }>(`/ops/curricula/${id}/preview?${params}`);
+  },
+  opsCurriculumSuggest: (id: string) => request<{ suggested: number }>(`/ops/curricula/${id}/suggest`, { method: "POST" }),
+  opsCurriculumPublish: (id: string) => request<CurriculumFrameworkRow>(`/ops/curricula/${id}/publish`, { method: "POST" }),
+  opsCurriculumUnpublish: (id: string) => request<CurriculumFrameworkRow>(`/ops/curricula/${id}/unpublish`, { method: "POST" }),
+  opsCurriculumDelete: (id: string) => request<{ deleted: string }>(`/ops/curricula/${id}`, { method: "DELETE" }),
+
   opsReview: (source?: ReviewSource) =>
     request<ReviewQueue>(`/ops/review${source ? `?source=${source}` : ""}`),
   opsReviewItem: (itemId: string) => request<ReviewDetail>(`/ops/review/items/${itemId}`),

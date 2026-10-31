@@ -88,7 +88,7 @@ Format : **Objectif** · **Fichiers** · **Fait quand** · **Tests**.
 
 **C3 · Écran O3 et libellés par alignement**
 - Objectif : UI `/ops/curricula/[id]` et libellés côté école selon `alignment_type` (voir `01`).
-- Fichiers : `web/app/ops/curricula/**`, `web/components/StandardBadge.tsx`.
+- Fichiers : `web/app/ops/curricula/**`, `web/components/StandardBadge.tsx`. **Livré** : `web/components/CurriculaWorkbench.tsx` (liste + import CSV, table attendu ↔ compétence, panneau d'édition avec aperçu « ce que voit l'école » servi par `GET /ops/curricula/{id}/preview`), routes `/ops/curricula` et `/ops/curricula/[frameworkId]`, entrée de nav super admin. Libellés côté école alignés sur `01` (« aligned with », « covers part of », « part of », « prerequisite of », « taught earlier than in your curriculum ») dans `views_service.alignment_wording`, seule source du vocabulaire ; `StandardBadge` affiche le libellé (plus seulement en infobulle) sur la carte de compétence. Vérification navigateur et relecture AR → `07`.
 
 ## Phase D — Département, direction, groupe, famille, IT
 

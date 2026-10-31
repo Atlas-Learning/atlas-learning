@@ -260,6 +260,12 @@ function ITView() {
           <p className="mb-3 text-xs text-sand-500">
             {canSetCurriculum ? t("curriculum.hint") : t("curriculum.readonly")}
           </p>
+          {/* Refonte C3 : un framework choisi mais encore en brouillon chez Atlas n'est pas servi. */}
+          {curriculum.configured_view && curriculum.configured_view !== curriculum.curriculum_view && (
+            <p className="mb-3 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700">
+              {t("curriculum.configured.draft")} <span className="font-medium" data-ltr>({curriculum.configured_view})</span>
+            </p>
+          )}
           <label className="block text-xs text-sand-400" htmlFor="curriculum-view">
             {t("curriculum.select")}
           </label>

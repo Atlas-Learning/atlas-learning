@@ -252,7 +252,7 @@ def test_ccss_view_profile_badges_wording_and_specific_first():
     assert a["standard"]["code"] == "4.NF.A.1"
     assert a["standard"]["framework"] == "CCSS_M"
     assert a["standard"]["alignment_type"] == "EXACT"
-    assert a["standard"]["wording_en"] == "aligned to 4.NF.A.1"
+    assert a["standard"]["wording_en"] == "aligned with 4.NF.A.1"
     assert a["standard"]["wording_ar"] == "متوافق مع 4.NF.A.1"
     assert [x["code"] for x in a["standards"]] == ["4.NF.A.1", "4.NF.B.3"]
     assert a["standards"][1]["wording_en"] == "covers part of 4.NF.B.3"
@@ -261,7 +261,7 @@ def test_ccss_view_profile_badges_wording_and_specific_first():
     assert all(x["framework"] == "CCSS_M" for x in a["standards"])
 
     b = by_code["M.B"]
-    assert b["standard"]["wording_en"] == "aligned to 4.NF.B.3"
+    assert b["standard"]["wording_en"] == "aligned with 4.NF.B.3"
     d = by_code["M.D"]
     assert [x["code"] for x in d["standards"]] == ["4.NF.A.1", "4.NF.B.4"]
     _teardown()
@@ -272,7 +272,7 @@ def test_confidence_m_adds_indicative_suffix():
     _set_view(s, ids["org"], CurriculumView.CCSS_M)
     profile = client.get(f"/students/{ids['student']}/profile", headers=_auth(ids["teacher"])).json()
     c = next(x for x in profile["competencies"] if x["code"] == "M.C")
-    assert c["standard"]["wording_en"] == "aligned to 4.NF.C.5 (indicative mapping)"
+    assert c["standard"]["wording_en"] == "aligned with 4.NF.C.5 (indicative mapping)"
     # MAJ-2 : le suffixe AR est en arabe, pas d'anglais LTR injecté dans une chaîne RTL
     assert c["standard"]["wording_ar"].endswith(" (تعيين استرشادي)")
     assert "indicative mapping" not in c["standard"]["wording_ar"]
@@ -285,7 +285,7 @@ def test_ccss_view_class_gaps_and_digest_root_cause_badged():
     gaps = client.get(f"/classrooms/{ids['c1']}/gaps", headers=_auth(ids["teacher"])).json()["gaps"]
     assert gaps[0]["root_cause"] == "M.B"
     assert gaps[0]["standard"]["code"] == "4.NF.B.3"
-    assert gaps[0]["standard"]["wording_en"] == "aligned to 4.NF.B.3"
+    assert gaps[0]["standard"]["wording_en"] == "aligned with 4.NF.B.3"
 
     digest = client.get(f"/classrooms/{ids['c1']}/digest", headers=_auth(ids["teacher"])).json()
     assert digest["top_priority"]["standard"]["code"] == "4.NF.B.3"
@@ -334,8 +334,8 @@ def test_coverage_covered_only_if_all_exact_mastered():
 
 
 def test_enrich_grade_vs_requirement_wording():
-    # M-4 (décision 2026-07-12) : un ENRICH-de-grade dit « taught earlier than »
-    # (un argument), un ENRICH-d'exigence dit « beyond … expectations ».
+    # M-4 (décision 2026-07-12) : un ENRICH-de-grade dit « taught earlier than in your curriculum »
+    # (formule du spec 01, refonte C3 — un argument), un ENRICH-d'exigence dit « beyond … expectations ».
     from src.models.competency import Competency
     from src.models.curriculum import CurriculumStandard
     client, ids, s = _setup()
@@ -353,8 +353,8 @@ def test_enrich_grade_vs_requirement_wording():
     profile = client.get(f"/students/{ids['student']}/profile", headers=_auth(ids["teacher"])).json()
     a_comp = next(x for x in profile["competencies"] if x["code"] == "M.A")
     wordings = {std["code"]: std for std in a_comp["standards"]}
-    assert wordings["5.NF.A.1"]["wording_en"] == "taught earlier than 5.NF.A.1"
-    assert wordings["5.NF.A.1"]["wording_ar"] == "يُدرَّس قبل 5.NF.A.1"
+    assert wordings["5.NF.A.1"]["wording_en"] == "taught earlier than in your curriculum (5.NF.A.1)"
+    assert wordings["5.NF.A.1"]["wording_ar"] == "يُدرَّس قبل موعده في منهجكم (5.NF.A.1)"
     assert wordings["6.NS.B.4"]["wording_en"] == "beyond 6.NS.B.4 expectations"
     _teardown()
 

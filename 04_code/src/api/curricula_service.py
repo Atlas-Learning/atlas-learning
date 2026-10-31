@@ -292,17 +292,8 @@ def coverage(s: Session, fw: CurriculumFrameworkDef) -> dict:
 
 
 def mapping_payload(m: CompetencyCurriculumMap, st: CurriculumStandard, comp: Optional[Competency]) -> dict:
-    """Ligne de mapping + aperçu du libellé que verra l'école (même table de wording que les vues)."""
-    is_moe = st.framework.key == vs.MOE_KEY
-    if is_moe:
-        wording_en, wording_ar = vs._MOE_WORDING_EN.format(label=st.label_en), vs._MOE_WORDING_AR.format(label=st.label_ar)
-    elif m.alignment_type == AlignmentType.ENRICH and m.enrich_kind == "grade":
-        wording_en, wording_ar = vs._ENRICH_GRADE_WORDING_EN.format(code=st.code), vs._ENRICH_GRADE_WORDING_AR.format(code=st.code)
-    else:
-        wording_en = vs._ALIGNMENT_WORDING_EN[m.alignment_type].format(code=st.code)
-        wording_ar = vs._ALIGNMENT_WORDING_AR[m.alignment_type].format(code=st.code)
-    if m.confidence == MappingConfidence.M:
-        wording_en += vs._INDICATIVE_SUFFIX_EN; wording_ar += vs._INDICATIVE_SUFFIX_AR
+    """Ligne de mapping + aperçu du libellé que verra l'école (même helper que les vues)."""
+    wording_en, wording_ar = vs.alignment_wording(st, m.alignment_type, m.confidence, m.enrich_kind)
     return {
         "competency_id": str(m.competency_id), "competency_code": comp.code if comp else None,
         "competency_label_en": comp.label_en if comp else None, "competency_label_ar": comp.label_ar if comp else None,
@@ -314,6 +305,23 @@ def mapping_payload(m: CompetencyCurriculumMap, st: CurriculumStandard, comp: Op
         "weight_version": m.weight_version,
         "preview_en": wording_en, "preview_ar": wording_ar,
     }
+
+
+def preview(s: Session, fw: CurriculumFrameworkDef, *, standard_id: uuid.UUID, alignment_type: str, confidence: str,
+            enrich_kind: Optional[str]) -> dict:
+    """Aperçu « ce que voit l'école » pour une ligne PAS ENCORE enregistrée (éditeur O3).
+    Le vocabulaire reste côté serveur : l'UI ne porte aucune table de libellés."""
+    st = s.get(CurriculumStandard, standard_id)
+    if st is None or st.framework_id != fw.id:
+        raise CurriculaError("attendu hors de ce framework")
+    try:
+        at, conf = AlignmentType(alignment_type), MappingConfidence(confidence)
+    except ValueError:
+        raise CurriculaError("alignment_type ou confidence invalide")
+    if at == AlignmentType.ENRICH and enrich_kind not in ("grade", "requirement"):
+        raise CurriculaError("ENRICH exige enrich_kind = grade | requirement")
+    en, ar = vs.alignment_wording(st, at, conf, enrich_kind if at == AlignmentType.ENRICH else None)
+    return {"preview_en": en, "preview_ar": ar}
 
 
 def framework_payload(s: Session, fw: CurriculumFrameworkDef) -> dict:

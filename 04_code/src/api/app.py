@@ -2290,6 +2290,20 @@ def ops_curricula_no_match(framework_id: uuid.UUID, body: NoMatchIn, ctx: UserCo
     return curricula_service.coverage(s, fw)
 
 
+@app.get("/ops/curricula/{framework_id}/preview")
+def ops_curricula_preview(framework_id: uuid.UUID, standard_id: uuid.UUID, alignment_type: str, confidence: str,
+                          enrich_kind: Optional[str] = None, ctx: UserContext = Depends(get_context),
+                          s: Session = Depends(get_db)):
+    """Aperçu du libellé école pour une ligne en cours d'édition (vocabulaire côté serveur)."""
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    try:
+        return curricula_service.preview(s, fw, standard_id=standard_id, alignment_type=alignment_type,
+                                         confidence=confidence, enrich_kind=enrich_kind)
+    except curricula_service.CurriculaError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/ops/curricula/{framework_id}/suggest")
 def ops_curricula_suggest(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
                           s: Session = Depends(get_db)):

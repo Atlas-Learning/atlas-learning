@@ -84,6 +84,7 @@ from src.rbac.authz import (
     can_access_classroom,
     can_access_school,
     can_access_student,
+    can_grant_dept_lead,
     can_manage_roles,
     can_manage_school,
     can_review_arabic,
@@ -1241,8 +1242,9 @@ def classroom_students(classroom_id: uuid.UUID, ctx: UserContext = Depends(get_c
 # ---------- rôles attribués hors roster : dept_lead, group_admin (refonte A1, Q13) ----------
 #
 # Le roster ne connaît pas ces rôles ; un admin IT de l'organisation (ou le super admin) les
-# attribue par email. Fonctionne avec SSO (l'IdP retrouve le compte par email) ou sans
-# (lien magique, cf. /admin/request-link). Logique dans src/rbac/grants.py.
+# attribue par email ; le ped_admin nomme le coordinateur (dept_lead) de SON école. Fonctionne
+# avec SSO (l'IdP retrouve le compte par email) ou sans (lien magique, cf. /admin/request-link).
+# Logique dans src/rbac/grants.py.
 
 class RoleGrantIn(BaseModel):
     email: str
@@ -1252,16 +1254,24 @@ class RoleGrantIn(BaseModel):
     grades: Optional[List[int]] = None     # dept_lead uniquement
 
 
-def _grant_org_id(s: Session, body: RoleGrantIn) -> uuid.UUID:
-    """Organisation sur laquelle porte la demande (pour le contrôle d'accès AVANT d'agir)."""
-    if body.school_id is not None:
-        sch = s.execute(active(School).where(School.id == body.school_id)).scalar_one_or_none()
-        if sch is None or sch.organization_id is None:
-            raise HTTPException(status_code=404, detail="école introuvable")
-        return sch.organization_id
-    if body.organization_id is None:
+def _live_school_org(s: Session, school_id: uuid.UUID) -> uuid.UUID:
+    sch = s.execute(active(School).where(School.id == school_id)).scalar_one_or_none()
+    if sch is None or sch.organization_id is None:
+        raise HTTPException(status_code=404, detail="école introuvable")
+    return sch.organization_id
+
+
+def _can_act_on_grant(ctx: UserContext, s: Session, role: Role,
+                      organization_id: Optional[uuid.UUID], school_id: Optional[uuid.UUID]) -> bool:
+    """Contrôle d'accès AVANT d'agir : org pour tout rôle ; école (ped_admin) pour un dept_lead."""
+    if school_id is not None:
+        org_id = _live_school_org(s, school_id)
+        if role == Role.DEPT_LEAD:
+            return can_grant_dept_lead(ctx, school_id, org_id)
+        return can_manage_roles(ctx, org_id)
+    if organization_id is None:
         raise HTTPException(status_code=400, detail="organization_id ou school_id requis")
-    return body.organization_id
+    return can_manage_roles(ctx, organization_id)
 
 
 @app.post("/admin/roles")
@@ -1275,12 +1285,11 @@ def admin_grant_role(body: RoleGrantIn, ctx: UserContext = Depends(get_context),
         raise HTTPException(status_code=400,
                             detail=f"rôle non attribuable ici (attendu : "
                                    f"{sorted(r.value for r in grants.GRANTABLE_ROLES)})")
-    org_id = _grant_org_id(s, body)
-    if not can_manage_roles(ctx, org_id):
-        raise HTTPException(status_code=403, detail="accès refusé à cette organisation")
+    if not _can_act_on_grant(ctx, s, role, body.organization_id, body.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette portée")
     try:
         res = grants.grant_role(s, email=body.email, role=role,
-                                organization_id=body.organization_id or org_id,
+                                organization_id=body.organization_id,
                                 school_id=body.school_id, grades=body.grades,
                                 actor_user_id=ctx.user_id)
     except grants.GrantError as e:
@@ -1291,8 +1300,17 @@ def admin_grant_role(body: RoleGrantIn, ctx: UserContext = Depends(get_context),
 
 
 @app.get("/admin/roles")
-def admin_list_roles(organization_id: uuid.UUID, ctx: UserContext = Depends(get_context),
-                     s: Session = Depends(get_db)):
+def admin_list_roles(organization_id: Optional[uuid.UUID] = None,
+                     school_id: Optional[uuid.UUID] = None,
+                     ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """Par organisation (gestionnaires de rôles) ou par école (ped_admin : ses dept_lead)."""
+    if school_id is not None:
+        if not can_grant_dept_lead(ctx, school_id, _live_school_org(s, school_id)):
+            raise HTTPException(status_code=403, detail="accès refusé à cette école")
+        return {"school_id": str(school_id),
+                "grants": [g.as_dict() for g in grants.list_grants(s, school_id=school_id)]}
+    if organization_id is None:
+        raise HTTPException(status_code=400, detail="organization_id ou school_id requis")
     if not can_manage_roles(ctx, organization_id):
         raise HTTPException(status_code=403, detail="accès refusé à cette organisation")
     return {"organization_id": str(organization_id),
@@ -1305,8 +1323,9 @@ def admin_revoke_role(membership_id: uuid.UUID, ctx: UserContext = Depends(get_c
     org_id = grants.organization_of_grant(s, membership_id)
     if org_id is None:
         raise HTTPException(status_code=404, detail="attribution introuvable")
-    if not can_manage_roles(ctx, org_id):
-        raise HTTPException(status_code=403, detail="accès refusé à cette organisation")
+    m = s.get(Membership, membership_id)
+    if not _can_act_on_grant(ctx, s, m.role, org_id, m.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette portée")
     g = grants.revoke_role(s, membership_id=membership_id, actor_user_id=ctx.user_id)
     s.commit()
     return {"revoked": g.as_dict()}

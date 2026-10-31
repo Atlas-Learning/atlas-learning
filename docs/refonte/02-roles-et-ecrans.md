@@ -34,7 +34,7 @@ L = lecture, E = écriture, — = aucun accès.
 | ItemFlag | E | E | — | — | — | E | E | E |
 | CurriculumFramework, mapping | L (publié) | L | L | L | — | E | — | — |
 | Choix du curriculum affiché par l'école (`POST /admin/curriculum`) | — | — | — | — | — | E (Q14) | — | — |
-| Attribution dept_lead / group_admin (`/admin/roles`) | — | — | — | — | E (son organisation) | E | — | — |
+| Attribution dept_lead / group_admin (`/admin/roles`) | — | — | E (dept_lead de son école) | — | E (son organisation) | E | — | — |
 | Réglages SSO, roster, rétention | — | — | — | — | E | E | — | — |
 
 `ped_admin` ne voit jamais de résultat par enseignant ni par élève nominatif dans les vues agrégées (invariant 4).

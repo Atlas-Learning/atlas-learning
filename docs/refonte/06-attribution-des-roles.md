@@ -10,7 +10,7 @@ la refonte sont attribués par un humain, **par email** — l'identité stable d
 
 | Rôle | Portée | Qui attribue |
 | --- | --- | --- |
-| `dept_lead` | une école (`Membership.school_id`) + des niveaux (`dept_lead_scope`) | admin IT de l'organisation, super admin |
+| `dept_lead` | une école (`Membership.school_id`) + des niveaux (`dept_lead_scope`) | ped_admin de l'école, admin IT de l'organisation, super admin |
 | `group_admin` | une organisation (`Membership.organization_id`) | admin IT de l'organisation, super admin |
 
 L'attribution crée le compte s'il n'existe pas (sans `external_ref`), ou s'appuie sur le compte
@@ -49,12 +49,12 @@ python scripts/grant_role.py --list --org groupe.ae
 python scripts/grant_role.py --revoke <membership_id>
 ```
 
-API (admin IT de l'organisation ou super admin) :
+API (admin IT de l'organisation ou super admin ; le ped_admin pour les `dept_lead` de son école, avec `school_id`) :
 
 | Méthode | Route | Corps / paramètres |
 | --- | --- | --- |
 | `POST` | `/admin/roles` | `{email, role, school_id?, organization_id?, grades?}` |
-| `GET` | `/admin/roles?organization_id=` | — |
+| `GET` | `/admin/roles?organization_id=` ou `?school_id=` | — |
 | `DELETE` | `/admin/roles/{membership_id}` | — |
 
 Le niveau d'une classe (qui définit la portée effective d'un `dept_lead`) vient du roster

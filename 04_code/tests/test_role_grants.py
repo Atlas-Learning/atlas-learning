@@ -209,8 +209,16 @@ def test_api_grant_requires_it_admin_of_the_organization():
     client, ids, s = _api()
     try:
         body = {"email": "coord@a1.edu", "role": "dept_lead", "school_id": str(ids["s1"]), "grades": [4]}
-        for who in ("ped", "teacher", "it_b"):           # ped_admin, enseignant, IT d'une AUTRE org
+        for who in ("teacher", "it_b"):                  # enseignant, IT d'une AUTRE org
             assert client.post("/admin/roles", json=body, headers=_auth(ids[who])).status_code == 403
+        # ped_admin : coordinateur de SON école oui, d'une autre école non, group_admin jamais
+        other = {**body, "email": "coord@b1.edu", "school_id": str(ids["s3"])}
+        assert client.post("/admin/roles", json=other, headers=_auth(ids["ped"])).status_code == 403
+        assert client.post("/admin/roles", json={"email": "dir@a.edu", "role": "group_admin",
+                                                 "organization_id": str(ids["oa"])},
+                           headers=_auth(ids["ped"])).status_code == 403
+        r_ped = client.post("/admin/roles", json={**body, "email": "coord2@a1.edu"}, headers=_auth(ids["ped"]))
+        assert r_ped.status_code == 200 and r_ped.json()["created_user"]
         r = client.post("/admin/roles", json=body, headers=_auth(ids["it_a"]))
         assert r.status_code == 200
         assert r.json()["role"] == "dept_lead" and r.json()["grades"] == [4] and r.json()["created_user"]
@@ -239,9 +247,19 @@ def test_api_list_and_revoke_scoped_to_organization():
         lst = client.get(f"/admin/roles?organization_id={ids['oa']}", headers=_auth(ids["it_a"]))
         assert lst.status_code == 200 and [g["email"] for g in lst.json()["grants"]] == ["coord@a1.edu"]
         assert client.get(f"/admin/roles?organization_id={ids['oa']}", headers=_auth(ids["it_b"])).status_code == 403
+        # ped_admin : pas la vue organisation, mais les dept_lead de SON école
         assert client.get(f"/admin/roles?organization_id={ids['oa']}", headers=_auth(ids["ped"])).status_code == 403
+        by_school = client.get(f"/admin/roles?school_id={ids['s1']}", headers=_auth(ids["ped"]))
+        assert by_school.status_code == 200 and [g["email"] for g in by_school.json()["grants"]] == ["coord@a1.edu"]
+        assert client.get(f"/admin/roles?school_id={ids['s3']}", headers=_auth(ids["ped"])).status_code == 403
+        assert client.get("/admin/roles", headers=_auth(ids["it_a"])).status_code == 400
         # révocation : IT d'une autre org → 403 ; IT de l'org → 200 ; deuxième fois → 404
         assert client.delete(f"/admin/roles/{mid}", headers=_auth(ids["it_b"])).status_code == 403
+        assert client.delete(f"/admin/roles/{mid}", headers=_auth(ids["teacher"])).status_code == 403
+        assert client.delete(f"/admin/roles/{mid}", headers=_auth(ids["ped"])).status_code == 200   # son école
+        r = client.post("/admin/roles", json={"email": "coord@a1.edu", "role": "dept_lead",
+                                              "school_id": str(ids["s1"]), "grades": [4]}, headers=_auth(ids["it_a"]))
+        mid = r.json()["membership_id"]
         assert client.delete(f"/admin/roles/{mid}", headers=_auth(ids["it_a"])).status_code == 200
         assert client.delete(f"/admin/roles/{mid}", headers=_auth(ids["it_a"])).status_code == 404
         assert client.get(f"/admin/roles?organization_id={ids['oa']}", headers=_auth(ids["it_a"])).json()["grants"] == []

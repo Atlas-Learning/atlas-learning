@@ -242,15 +242,22 @@ def organization_of_grant(s: Session, membership_id: uuid.UUID) -> Optional[uuid
     return None
 
 
-def list_grants(s: Session, *, organization_id: uuid.UUID) -> List[Grant]:
-    """Attributions dept_lead / group_admin d'une organisation (écoles vivantes incluses)."""
-    school_ids = select(School.id).where(School.organization_id == organization_id)
+def list_grants(s: Session, *, organization_id: Optional[uuid.UUID] = None,
+                school_id: Optional[uuid.UUID] = None) -> List[Grant]:
+    """Attributions dept_lead / group_admin d'une organisation (écoles vivantes incluses), ou
+    les seuls dept_lead d'une école (`school_id`, vue du ped_admin)."""
+    if school_id is not None:
+        scope = (Membership.role == Role.DEPT_LEAD) & (Membership.school_id == school_id)
+    elif organization_id is not None:
+        school_ids = select(School.id).where(School.organization_id == organization_id)
+        scope = ((Membership.organization_id == organization_id)
+                 | Membership.school_id.in_(school_ids))
+    else:
+        raise GrantError("organization_id ou school_id requis")
     rows = s.execute(
         select(Membership, AppUser)
         .join(AppUser, AppUser.id == Membership.user_id)
-        .where(Membership.role.in_(list(GRANTABLE_ROLES)),
-               (Membership.organization_id == organization_id) | Membership.school_id.in_(school_ids),
-               AppUser.deleted_at.is_(None))
+        .where(Membership.role.in_(list(GRANTABLE_ROLES)), scope, AppUser.deleted_at.is_(None))
         .order_by(Membership.role, AppUser.email)
     ).all()
     out: List[Grant] = []

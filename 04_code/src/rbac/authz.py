@@ -76,11 +76,19 @@ def can_manage_school(ctx: UserContext, school_id) -> bool:
 def can_manage_roles(ctx: UserContext, organization_id) -> bool:
     """Attribuer / révoquer les rôles hors roster (dept_lead, group_admin) d'une organisation.
 
-    Admin IT de CETTE organisation ou super admin. Ni le ped_admin (portée école, pas de
-    gestion des comptes), ni le group_admin (lecture seule) — cf. src/rbac/grants.py."""
+    Admin IT de CETTE organisation ou super admin. Le group_admin ne gère rien (lecture seule).
+    Le ped_admin passe par `can_grant_dept_lead` (son école, le seul rôle dept_lead)."""
     if is_super(ctx):
         return True
     return Role.IT_ADMIN in ctx.roles and organization_id in ctx.admin_org_ids
+
+
+def can_grant_dept_lead(ctx: UserContext, school_id, school_organization_id) -> bool:
+    """Nommer / révoquer le coordinateur (`dept_lead`) d'une école : les gestionnaires de rôles de
+    l'organisation, ou le ped_admin de CETTE école (décision 2026-10-31)."""
+    if can_manage_roles(ctx, school_organization_id):
+        return True
+    return Role.PED_ADMIN in ctx.roles and school_id in ctx.school_ids
 
 
 def can_access_school(ctx: UserContext, school_id) -> bool:

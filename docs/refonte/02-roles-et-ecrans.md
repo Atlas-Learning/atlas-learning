@@ -14,8 +14,8 @@ Base : enum `Role` dans `src/models/base.py`, portée via `Membership` (`organiz
 | Enseignant | `teacher` | Ses classes (`TeacherClassroom`) | SSO | Existe |
 | Élève | `student` | Lui-même | SSO + code de check-in | Existe, code à ajouter |
 | Parent | `parent` | Ses enfants (`ParentStudent`) | Lien magique | Existe |
-| Coordinateur maths | `dept_lead` | École + liste de niveaux | SSO | **À créer** |
-| Admin groupe scolaire | `group_admin` | Organisation (toutes ses écoles) | SSO | **À créer** |
+| Coordinateur maths | `dept_lead` | École + liste de niveaux | SSO, ou lien magique sans SSO | Créé (A1) — attribué hors roster, voir `06` |
+| Admin groupe scolaire | `group_admin` | Organisation (toutes ses écoles) | SSO, ou lien magique sans SSO | Créé (A1) — attribué hors roster, voir `06` |
 
 ## Matrice d'accès aux nouveaux objets
 
@@ -33,6 +33,8 @@ L = lecture, E = écriture, — = aucun accès.
 | Item d'école (phase E) | E (les siens) | E (partage département) | — | — | — | E | E | E (arabe) |
 | ItemFlag | E | E | — | — | — | E | E | E |
 | CurriculumFramework, mapping | L (publié) | L | L | L | — | E | — | — |
+| Choix du curriculum affiché par l'école (`POST /admin/curriculum`) | — | — | — | — | — | E (Q14) | — | — |
+| Attribution dept_lead / group_admin (`/admin/roles`) | — | — | — | — | E (son organisation) | E | — | — |
 | Réglages SSO, roster, rétention | — | — | — | — | E | E | — | — |
 
 `ped_admin` ne voit jamais de résultat par enseignant ni par élève nominatif dans les vues agrégées (invariant 4).

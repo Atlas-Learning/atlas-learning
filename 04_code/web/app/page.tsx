@@ -12,6 +12,8 @@ function landingFor(me: Me): string {
   const r = new Set(me.roles);
   if (r.has("teacher") && me.classrooms[0]) return `/teacher/${me.classrooms[0].id}`;
   if ((r.has("ped_admin") || r.has("super_admin")) && me.schools[0]) return `/admin/${me.schools[0].id}`;
+  if (r.has("dept_lead") && me.department_scopes[0]) return `/department/${me.department_scopes[0].school_id}`;
+  if (r.has("group_admin") && me.organizations[0]) return `/group/${me.organizations[0].id}`;
   if (r.has("it_admin")) return "/it";
   if (r.has("linguist")) return "/linguist"; // staff Atlas global (relecture AR)
   if (r.has("student") && me.own_student_id) return "/student";

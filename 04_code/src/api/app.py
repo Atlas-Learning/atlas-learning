@@ -69,7 +69,9 @@ from src.rbac.single_use import (
 from src.compliance import service as compliance
 from src.licensing import service as licensing
 from src.notify.email import build_email_sender
-from src.notify.templates import admin_login_email, linguist_login_email, parent_login_email
+from src.notify.templates import (
+    admin_login_email, linguist_login_email, parent_login_email, staff_login_email,
+)
 from src.onboarding.service import onboard_tenant
 from src.restitution.proof import proof_surfaces
 from src.rbac import oidc
@@ -82,9 +84,12 @@ from src.rbac.authz import (
     can_access_classroom,
     can_access_school,
     can_access_student,
+    can_manage_roles,
     can_manage_school,
     can_review_arabic,
+    is_super,
 )
+from src.rbac import grants
 
 _engine = make_engine()
 
@@ -431,7 +436,8 @@ def admin_set_integration(body: IntegrationIn,
     return {"provider": integ.provider, "status": integ.status}
 
 
-def _require_curriculum_admin_org(ctx: UserContext, s: Session) -> Organization:
+def _require_curriculum_admin_org(ctx: UserContext, s: Session,
+                                  organization_id: Optional[uuid.UUID] = None) -> Organization:
     """Console curriculum (B3) : réglage d'AFFICHAGE pédagogique — ouvert au ped admin
     en plus de l'IT admin (même résolution de tenant que _require_it_admin_org).
 
@@ -442,6 +448,12 @@ def _require_curriculum_admin_org(ctx: UserContext, s: Session) -> Organization:
     """
     if not ctx.has(Role.IT_ADMIN, Role.PED_ADMIN, Role.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="rôle admin requis")
+    # Super admin Atlas : il n'a pas de membership d'organisation → il NOMME le tenant visé.
+    if organization_id is not None and is_super(ctx):
+        org = s.get(Organization, organization_id)
+        if org is None or org.deleted_at is not None:
+            raise HTTPException(status_code=404, detail="organisation introuvable")
+        return org
     org_ids = set(ctx.org_ids)
     if not org_ids and ctx.school_ids:
         schools = s.execute(select(School).where(School.id.in_(ctx.school_ids))).scalars().all()
@@ -455,9 +467,11 @@ def _require_curriculum_admin_org(ctx: UserContext, s: Session) -> Organization:
 
 
 @app.get("/admin/curriculum")
-def admin_curriculum(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
-    """Vue curriculaire du tenant (B3) : framework affiché + frameworks disponibles."""
-    org = _require_curriculum_admin_org(ctx, s)
+def admin_curriculum(organization_id: Optional[uuid.UUID] = None,
+                     ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """Vue curriculaire du tenant (B3) : framework affiché + frameworks disponibles.
+    `organization_id` : requis seulement pour un super admin (qui nomme le tenant)."""
+    org = _require_curriculum_admin_org(ctx, s, organization_id)
     return {
         "organization": {"id": str(org.id), "name": org.name},
         "curriculum_view": org.curriculum_view.value,
@@ -470,10 +484,15 @@ class CurriculumViewIn(BaseModel):
 
 
 @app.post("/admin/curriculum")
-def admin_set_curriculum(body: CurriculumViewIn,
+def admin_set_curriculum(body: CurriculumViewIn, organization_id: Optional[uuid.UUID] = None,
                          ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
-    """Bascule la vue curriculaire du tenant (B3) — un seul framework actif en v1 (D-B3)."""
-    org = _require_curriculum_admin_org(ctx, s)
+    """Bascule la vue curriculaire du tenant (B3) — un seul framework actif en v1 (D-B3).
+
+    Refonte (Q14, décision 2026-10-31) : le choix du curriculum est une opération Atlas —
+    réservée au super admin. Les admins de l'école le LISENT (GET) sans le modifier."""
+    if not is_super(ctx):
+        raise HTTPException(status_code=403, detail="réservé au super admin Atlas")
+    org = _require_curriculum_admin_org(ctx, s, organization_id)
     try:
         view = CurriculumView(body.curriculum_view)
     except ValueError:
@@ -701,35 +720,53 @@ def parent_login_confirm(body: MagicLinkConfirmIn, s: Session = Depends(get_db))
     return {"token": make_token(str(user.id))}
 
 
-# ---------- accès super-admin Atlas (équipe éditeur) : lien magique interne ----------
+# ---------- accès par lien magique : super-admin Atlas, et rôles attribués hors roster ----------
 #
 # Les SUPER_ADMIN ne peuvent pas dépendre de l'IdP d'un CLIENT. Plutôt qu'un mot de passe
 # (interdit par la revue DSI), ils se connectent par un lien magique signé envoyé à leur
 # email d'éditeur — court-vécu, à usage unique, cloisonné (purpose=admin_login).
+#
+# Refonte A1 (Q13) : les rôles `dept_lead` et `group_admin` sont attribués hors roster
+# (src/rbac/grants.py). Quand aucun IdP ne les porte (école ou groupe « sans SSO »), ils
+# ouvrent leur session par le même lien magique. Rôles autorisés : grants.MAGIC_LINK_ROLES.
+# Avec SSO, ces mêmes comptes passent par /oauth/{provider} comme tout le monde.
 
-_ADMIN_LINK_TTL = 30 * 60  # 30 min : accès éditeur, fenêtre courte
+_ADMIN_LINK_TTL = 30 * 60  # 30 min : fenêtre courte
+
+
+def _magic_link_role(ctx: UserContext) -> Optional[Role]:
+    """Rôle qui ouvre droit au lien magique (super_admin prioritaire pour le wording), ou None."""
+    if Role.SUPER_ADMIN in ctx.roles:
+        return Role.SUPER_ADMIN
+    for r in (Role.GROUP_ADMIN, Role.DEPT_LEAD):
+        if r in ctx.roles and r in grants.MAGIC_LINK_ROLES:
+            return r
+    return None
 
 
 @app.post("/admin/request-link")
 def admin_request_link(body: ParentRequestIn, s: Session = Depends(get_db),
                        sender=Depends(get_email_sender)):
-    """Auto-demande d'un lien magique d'accès éditeur. Réservé aux SUPER_ADMIN.
+    """Auto-demande d'un lien magique. Réservé aux rôles de `grants.MAGIC_LINK_ROLES`
+    (super_admin, group_admin, dept_lead).
 
-    Réponse constante (anti-énumération) : on ne révèle jamais si l'email est super-admin.
+    Réponse constante (anti-énumération) : on ne révèle jamais si l'email y a droit.
     """
     user = s.execute(
         select(AppUser).where(AppUser.email == body.email.strip().lower(),
                               AppUser.deleted_at.is_(None))
     ).scalar_one_or_none()
     if user is not None and user.is_active:
-        ctx = build_user_context(s, user.id)
-        if Role.SUPER_ADMIN in ctx.roles:
+        role = _magic_link_role(build_user_context(s, user.id))
+        if role is not None:
             token = make_single_use_token(str(user.id), purpose="admin_login",
                                           ttl_s=_ADMIN_LINK_TTL)
             link = f"{_web_base()}/api/admin/login?token={token}"
-            subject, html, text = admin_login_email(link)
+            template = admin_login_email if role == Role.SUPER_ADMIN else staff_login_email
+            subject, html, text = template(link)
             sender.send(to=user.email, subject=subject, html=html, text=text)
-            log_action(s, action="admin.request_link", user_id=user.id)
+            log_action(s, action="admin.request_link", user_id=user.id,
+                       details={"role": role.value})
             s.commit()
     return {"ok": True}
 
@@ -753,7 +790,7 @@ def admin_login(token: str, s: Session = Depends(get_db)):
     if user is None or not user.is_active or user.deleted_at is not None:
         return RedirectResponse(f"{web}/login?admin_error=invalid", status_code=302)
     # Contrôle du rôle en LECTURE (le POST re-vérifie au moment de la connexion).
-    if Role.SUPER_ADMIN not in build_user_context(s, user.id).roles:
+    if _magic_link_role(build_user_context(s, user.id)) is None:
         return RedirectResponse(f"{web}/login?admin_error=forbidden", status_code=302)
     # Jeton de LIEN dans le fragment (#…) : jamais envoyé aux serveurs ni journalisé.
     return RedirectResponse(f"{web}/login/confirm#token={token}", status_code=302)
@@ -773,9 +810,10 @@ def admin_login_confirm(body: MagicLinkConfirmIn, s: Session = Depends(get_db)):
     if user is None or not user.is_active or user.deleted_at is not None:
         raise HTTPException(status_code=401, detail="invalid")
     # Re-vérifie le rôle au moment de la connexion (révocation possible entre-temps).
-    if Role.SUPER_ADMIN not in build_user_context(s, user.id).roles:
+    role = _magic_link_role(build_user_context(s, user.id))
+    if role is None:
         raise HTTPException(status_code=403, detail="forbidden")
-    log_action(s, action="admin.login", user_id=user.id)
+    log_action(s, action="admin.login", user_id=user.id, details={"role": role.value})
     s.commit()
     return {"token": make_token(str(user.id))}
 
@@ -1030,11 +1068,29 @@ def me(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
                         and can_access_classroom(ctx, cls.id, sch.id):
                     classrooms.append(_cls_payload(cls))
 
+    # Organisations : celles qu'un group_admin lit ou qu'un it_admin administre (refonte A1).
+    org_ids = sorted(ctx.admin_org_ids | frozenset(
+        m.organization_id for m in s.execute(
+            select(Membership).where(Membership.user_id == ctx.user_id,
+                                     Membership.role == Role.GROUP_ADMIN,
+                                     Membership.organization_id.is_not(None))
+        ).scalars()), key=str)
+    organizations = []
+    for oid in org_ids:
+        org = s.get(Organization, oid)
+        if org is not None and org.deleted_at is None:
+            organizations.append({"id": str(org.id), "name": org.name})
+
     return {
         "user_id": str(ctx.user_id),
         "roles": sorted(r.value for r in ctx.roles),
         "schools": schools,
         "classrooms": classrooms,
+        "organizations": organizations,
+        # dept_lead : couples (école, niveau) couverts — pilote l'écran de département
+        "department_scopes": sorted(
+            ({"school_id": str(sid), "grade": g} for sid, g in ctx.dept_scopes),
+            key=lambda d: (d["school_id"], d["grade"])),
         "child_student_ids": [str(x) for x in ctx.child_student_ids],
         "own_student_id": str(ctx.own_student_id) if ctx.own_student_id else None,
     }
@@ -1180,6 +1236,80 @@ def classroom_students(classroom_id: uuid.UUID, ctx: UserContext = Depends(get_c
         raise HTTPException(status_code=403, detail="accès refusé à cette classe")
     return {"classroom_id": str(classroom_id), "name": cls.name,
             "students": list_students(s, classroom_id)}
+
+
+# ---------- rôles attribués hors roster : dept_lead, group_admin (refonte A1, Q13) ----------
+#
+# Le roster ne connaît pas ces rôles ; un admin IT de l'organisation (ou le super admin) les
+# attribue par email. Fonctionne avec SSO (l'IdP retrouve le compte par email) ou sans
+# (lien magique, cf. /admin/request-link). Logique dans src/rbac/grants.py.
+
+class RoleGrantIn(BaseModel):
+    email: str
+    role: str                              # "dept_lead" | "group_admin"
+    organization_id: Optional[uuid.UUID] = None
+    school_id: Optional[uuid.UUID] = None
+    grades: Optional[List[int]] = None     # dept_lead uniquement
+
+
+def _grant_org_id(s: Session, body: RoleGrantIn) -> uuid.UUID:
+    """Organisation sur laquelle porte la demande (pour le contrôle d'accès AVANT d'agir)."""
+    if body.school_id is not None:
+        sch = s.execute(active(School).where(School.id == body.school_id)).scalar_one_or_none()
+        if sch is None or sch.organization_id is None:
+            raise HTTPException(status_code=404, detail="école introuvable")
+        return sch.organization_id
+    if body.organization_id is None:
+        raise HTTPException(status_code=400, detail="organization_id ou school_id requis")
+    return body.organization_id
+
+
+@app.post("/admin/roles")
+def admin_grant_role(body: RoleGrantIn, ctx: UserContext = Depends(get_context),
+                     s: Session = Depends(get_db)):
+    try:
+        role = Role(body.role)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="rôle inconnu")
+    if role not in grants.GRANTABLE_ROLES:
+        raise HTTPException(status_code=400,
+                            detail=f"rôle non attribuable ici (attendu : "
+                                   f"{sorted(r.value for r in grants.GRANTABLE_ROLES)})")
+    org_id = _grant_org_id(s, body)
+    if not can_manage_roles(ctx, org_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette organisation")
+    try:
+        res = grants.grant_role(s, email=body.email, role=role,
+                                organization_id=body.organization_id or org_id,
+                                school_id=body.school_id, grades=body.grades,
+                                actor_user_id=ctx.user_id)
+    except grants.GrantError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    s.commit()
+    return {**res.grant.as_dict(), "created_user": res.created_user,
+            "created_membership": res.created_membership}
+
+
+@app.get("/admin/roles")
+def admin_list_roles(organization_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                     s: Session = Depends(get_db)):
+    if not can_manage_roles(ctx, organization_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette organisation")
+    return {"organization_id": str(organization_id),
+            "grants": [g.as_dict() for g in grants.list_grants(s, organization_id=organization_id)]}
+
+
+@app.delete("/admin/roles/{membership_id}")
+def admin_revoke_role(membership_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                      s: Session = Depends(get_db)):
+    org_id = grants.organization_of_grant(s, membership_id)
+    if org_id is None:
+        raise HTTPException(status_code=404, detail="attribution introuvable")
+    if not can_manage_roles(ctx, org_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette organisation")
+    g = grants.revoke_role(s, membership_id=membership_id, actor_user_id=ctx.user_id)
+    s.commit()
+    return {"revoked": g.as_dict()}
 
 
 class ClassroomGradeIn(BaseModel):

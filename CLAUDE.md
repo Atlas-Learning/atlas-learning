@@ -38,6 +38,7 @@ Depuis `04_code/` :
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest
 make test          # suite complète (doit rester verte) — alias de .venv/bin/python -m pytest -q
 make migrate       # alembic upgrade head (SQLite par défaut, DATABASE_URL pour Postgres)
+.venv/bin/python scripts/grant_role.py --help   # attribuer dept_lead / group_admin (docs/refonte/06)
 cd web && npm install && npm run dev
 ```
 

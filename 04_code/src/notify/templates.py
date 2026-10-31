@@ -76,6 +76,23 @@ def admin_login_email(link: str) -> Tuple[str, str, str]:
     return subject, html, text
 
 
+def staff_login_email(link: str) -> Tuple[str, str, str]:
+    """(subject, html, text) — lien magique d'accès pour un rôle d'école ou de groupe scolaire
+    attribué hors roster (dept_lead, group_admin) quand aucun IdP ne le porte."""
+    subject = "Atlas Learning — your sign-in link / رابط الدخول إلى أطلس"
+    html = (
+        f'<div style="font-family:system-ui,sans-serif;line-height:1.5">'
+        f"<p>Use this single-use link to sign in to Atlas Learning.</p>"
+        f'<p><a href="{link}">Sign in →</a></p>'
+        f'<p style="color:#888;font-size:13px">This link expires shortly and signs in one '
+        f"account only. If you didn't request it, ignore this email.</p>"
+        f'<hr><p dir="rtl">استخدم هذا الرابط لمرة واحدة لتسجيل الدخول إلى أطلس للتعلّم.</p>'
+        f'<p dir="rtl"><a href="{link}">تسجيل الدخول ←</a></p></div>'
+    )
+    text = f"Sign in to Atlas Learning: {link}"
+    return subject, html, text
+
+
 def linguist_login_email(link: str) -> Tuple[str, str, str]:
     """(subject, html, text) — lien magique d'accès à la console linguiste (staff Atlas)."""
     subject = "Atlas Learning — linguist review sign-in link / رابط دخول المراجع اللغوي"

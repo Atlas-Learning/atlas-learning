@@ -21,7 +21,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     api.authProviders().then((r) => setProviders(r.providers)).catch(() => setProviders([]));
-    if (new URLSearchParams(window.location.search).get("sso_error")) setError(t("login.sso.error"));
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("sso_error")) setError(t("login.sso.error"));
+    if (qs.get("admin_error")) setError(t("login.link.error"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -80,6 +82,11 @@ export default function LoginPage() {
           <p className="mt-6 text-center text-sm text-sand-500">
             <a href="/parent" className="font-medium text-brand-600 hover:underline">
               {t("login.parent")}
+            </a>
+          </p>
+          <p className="mt-2 text-center text-sm text-sand-500">
+            <a href="/staff/login" className="font-medium text-brand-600 hover:underline">
+              {t("login.staff")}
             </a>
           </p>
         </div>

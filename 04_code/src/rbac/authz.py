@@ -41,6 +41,9 @@ class UserContext:
     dept_classroom_ids: FrozenSet[uuid.UUID] = field(default_factory=frozenset)
     # group_admin : écoles vivantes des organisations de ses memberships group_admin.
     group_school_ids: FrozenSet[uuid.UUID] = field(default_factory=frozenset)
+    # it_admin : organisations qu'il administre (memberships it_admin uniquement — `org_ids`
+    # agrège TOUTES les memberships et ne vaut pas portée d'administration).
+    admin_org_ids: FrozenSet[uuid.UUID] = field(default_factory=frozenset)
 
     def has(self, *roles: Role) -> bool:
         return any(r in self.roles for r in roles)
@@ -68,6 +71,16 @@ def can_manage_school(ctx: UserContext, school_id) -> bool:
     if is_super(ctx):
         return True
     return ctx.has(Role.IT_ADMIN, Role.PED_ADMIN) and school_id in ctx.school_ids
+
+
+def can_manage_roles(ctx: UserContext, organization_id) -> bool:
+    """Attribuer / révoquer les rôles hors roster (dept_lead, group_admin) d'une organisation.
+
+    Admin IT de CETTE organisation ou super admin. Ni le ped_admin (portée école, pas de
+    gestion des comptes), ni le group_admin (lecture seule) — cf. src/rbac/grants.py."""
+    if is_super(ctx):
+        return True
+    return Role.IT_ADMIN in ctx.roles and organization_id in ctx.admin_org_ids
 
 
 def can_access_school(ctx: UserContext, school_id) -> bool:
@@ -179,5 +192,17 @@ def build_user_context(session: Session, user_id: uuid.UUID) -> UserContext:
                                     School.deleted_at.is_(None))
         ).scalars())
 
+    admin_org_ids = frozenset(m.organization_id for m in memberships
+                              if m.role == Role.IT_ADMIN and m.organization_id)
+    # Un it_admin rosterisé peut n'avoir qu'une école (org + school posés par la sync) : son
+    # organisation est alors celle de l'école.
+    it_school_ids = [m.school_id for m in memberships if m.role == Role.IT_ADMIN and m.school_id]
+    if it_school_ids:
+        admin_org_ids = admin_org_ids | frozenset(
+            o for o in session.execute(
+                select(School.organization_id).where(School.id.in_(it_school_ids))
+            ).scalars() if o is not None
+        )
+
     return UserContext(user_id, roles, school_ids, org_ids, classroom_ids, child_ids, own,
-                       dept_scopes, dept_classroom_ids, group_school_ids)
+                       dept_scopes, dept_classroom_ids, group_school_ids, admin_org_ids)

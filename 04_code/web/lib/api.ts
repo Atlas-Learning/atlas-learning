@@ -13,6 +13,7 @@ import type {
   NextItem,
   RemediationPreview,
   ProofSurfaces,
+  RoleGrant,
   SchoolOverview,
   TutorExplanation,
   StudentProfile,
@@ -125,6 +126,13 @@ export const api = {
   // — Onboarding guidé + accès parent —
   adminSetup: () => request<SetupState>("/admin/setup"),
   parentsInvite: () => request<{ invited: number }>("/admin/parents/invite", { method: "POST" }),
+  // Lien magique staff « sans SSO » (super_admin, group_admin, dept_lead) — même flux que
+  // l'accès éditeur : /admin/request-link → /admin/login → /admin/login/confirm.
+  staffRequestLink: (email: string) =>
+    request<{ ok: boolean }>("/admin/request-link", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
   parentRequestLink: (email: string) =>
     request<{ ok: boolean }>("/parent/request-link", {
       method: "POST",
@@ -167,6 +175,22 @@ export const api = {
     request<unknown>(`/students/${studentId}/guardians/${userId}`, { method: "DELETE" }),
 
   me: () => request<Me>("/me"),
+
+  // Rôles attribués hors roster (refonte A1) — admin IT de l'organisation ou super admin.
+  adminRoles: (organizationId: string) =>
+    request<{ organization_id: string; grants: RoleGrant[] }>(`/admin/roles?organization_id=${organizationId}`),
+  adminGrantRole: (body: {
+    email: string;
+    role: "dept_lead" | "group_admin";
+    organization_id?: string;
+    school_id?: string;
+    grades?: number[];
+  }) => request<RoleGrant & { created_user: boolean; created_membership: boolean }>("/admin/roles", {
+    method: "POST",
+    body: JSON.stringify(body),
+  }),
+  adminRevokeRole: (membershipId: string) =>
+    request<{ revoked: RoleGrant }>(`/admin/roles/${membershipId}`, { method: "DELETE" }),
 
   classGaps: (classroomId: string) =>
     request<{ classroom_id: string; gaps: ClassGap[] }>(`/classrooms/${classroomId}/gaps`),

@@ -18,7 +18,61 @@ export const DICT = {
   "nav.trajectory": { en: "My child", ar: "طفلي" },
   "nav.security": { en: "Security & SSO", ar: "الأمن والدخول الموحّد" },
   "nav.linguist": { en: "Arabic review", ar: "مراجعة العربية" },
+  "nav.department": { en: "Department", ar: "القسم" },
+  "nav.group": { en: "Schools", ar: "المدارس" },
   "nav.signout": { en: "Sign out", ar: "تسجيل الخروج" },
+
+  // — Coordinateur maths (C1, structure ; contenu au ticket D1) —
+  "department.title": { en: "Department review", ar: "مراجعة القسم" },
+  "department.subtitle": {
+    en: "Your grades in this school. Open a class to see its gaps and the root causes behind them.",
+    ar: "صفوفك في هذه المدرسة. افتح صفًا لترى ثغراته والأسباب الجذرية خلفها.",
+  },
+  "department.grade": { en: "Grade", ar: "الصف" },
+  "department.classes": { en: "Classes in this grade", ar: "صفوف هذا المستوى" },
+  "department.noclass": {
+    en: "No class carries this grade yet. Your school admin sets a class's grade in the classes view.",
+    ar: "لا يحمل أي صف هذا المستوى بعد. يحدّد مسؤول مدرستك مستوى الصف في عرض الصفوف.",
+  },
+  "department.open": { en: "Open class", ar: "افتح الصف" },
+  "department.review.title": { en: "Common root causes across classes", ar: "الأسباب الجذرية المشتركة بين الصفوف" },
+  "department.review.body": {
+    en: "This view will show the root causes shared across classes of the grade, the actions taken and their measured effect, and your recorded decision. It never shows results per teacher.",
+    ar: "ستعرض هذه اللوحة الأسباب الجذرية المشتركة بين صفوف المستوى، والإجراءات المتّخذة وأثرها المقيس، وقرارك المسجَّل. لا تعرض أبدًا نتائج بحسب المعلّم.",
+  },
+  "department.noscope": {
+    en: "No grade is assigned to you in this school. Ask your IT admin to set your department scope.",
+    ar: "لم يُسنَد إليك أي مستوى في هذه المدرسة. اطلب من مسؤول تقنية المعلومات تحديد نطاق قسمك.",
+  },
+
+  // — Groupe scolaire (G1, structure ; contenu au ticket D3) —
+  "group.title": { en: "Schools overview", ar: "نظرة عامة على المدارس" },
+  "group.subtitle": {
+    en: "Every school in your group, compared on the same skill graph — never on raw curriculum scores.",
+    ar: "كل مدارس مجموعتك، مقارنةً على رسم المهارات نفسه — لا على درجات المنهج الخام أبدًا.",
+  },
+  "group.kpi.schools": { en: "Schools", ar: "المدارس" },
+  "group.kpi.students": { en: "Students", ar: "الطلاب" },
+  "group.kpi.classes": { en: "Classes", ar: "الصفوف" },
+  "group.school.open": { en: "Open school", ar: "افتح المدرسة" },
+  "group.school.loading": { en: "Loading…", ar: "جارٍ التحميل…" },
+  "group.school.unavailable": { en: "Not available", ar: "غير متاح" },
+  "group.common.title": { en: "Root causes shared across schools", ar: "الأسباب الجذرية المشتركة بين المدارس" },
+  "group.common.body": {
+    en: "This view will show the root causes common to several schools, by grade, with the number of students each one blocks — on the neutral skill graph.",
+    ar: "ستعرض هذه اللوحة الأسباب الجذرية المشتركة بين عدة مدارس، بحسب المستوى، مع عدد الطلاب الذين يعيقهم كل سبب — على رسم المهارات المحايد.",
+  },
+  "group.noschool": {
+    en: "No school is attached to this group yet.",
+    ar: "لم تُلحَق أي مدرسة بهذه المجموعة بعد.",
+  },
+  "group.unlocked.pending": { en: "Unlocks: measured after the first weekly loop", ar: "الفتح: يُقاس بعد أول حلقة أسبوعية" },
+
+  // — Curriculum : choix réservé à Atlas (Q14) —
+  "curriculum.readonly": {
+    en: "The displayed framework is set by Atlas for your school. Contact your Atlas account manager to change it.",
+    ar: "يحدّد أطلس الإطار المعروض لمدرستك. تواصل مع مدير حسابك في أطلس لتغييره.",
+  },
   "lang.toggle": { en: "العربية", ar: "English" },
 
   // — Auth —
@@ -32,6 +86,22 @@ export const DICT = {
   "login.mfa.required": { en: "Enter your MFA code to continue.", ar: "أدخل رمز المصادقة للمتابعة." },
   "login.demo": { en: "Demo accounts", ar: "حسابات تجريبية" },
   "login.parent": { en: "Parent? Get a login link →", ar: "ولي أمر؟ احصل على رابط دخول ←" },
+  "login.staff": { en: "Coordinator or group admin without SSO? Get a sign-in link →", ar: "منسّق أو مسؤول مجموعة بدون دخول موحّد؟ احصل على رابط دخول ←" },
+  "login.link.error": {
+    en: "This sign-in link is invalid, already used or expired. Request a new one.",
+    ar: "رابط الدخول هذا غير صالح أو مستعمل أو منتهي الصلاحية. اطلب رابطًا جديدًا.",
+  },
+  "staff.login.title": { en: "Sign in with a link", ar: "الدخول عبر رابط" },
+  "staff.login.intro": {
+    en: "For coordinators and group administrators whose school has no single sign-on. Enter the email your administrator registered and we'll send you a single-use link.",
+    ar: "للمنسّقين ومسؤولي المجموعات الذين لا تملك مدرستهم دخولًا موحّدًا. أدخل البريد الذي سجّله المسؤول وسنرسل لك رابطًا لمرة واحدة.",
+  },
+  "staff.login.submit": { en: "Send me a link", ar: "أرسل لي رابطًا" },
+  "staff.login.sent.title": { en: "Check your inbox", ar: "تحقّق من بريدك" },
+  "staff.login.sent.body": {
+    en: "If this email has access, a single-use link is on its way. It expires in 30 minutes.",
+    ar: "إذا كان لهذا البريد صلاحية دخول، فالرابط في طريقه إليك. تنتهي صلاحيته خلال 30 دقيقة.",
+  },
   "login.noprovider": {
     en: "No sign-in method is configured yet. Contact your administrator.",
     ar: "لا توجد طريقة دخول مهيّأة بعد. تواصل مع المسؤول.",

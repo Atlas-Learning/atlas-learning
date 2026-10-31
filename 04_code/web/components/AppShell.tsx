@@ -32,6 +32,15 @@ function navFor(me: Me): NavItem[] {
       items.push({ href: `/admin/${school.id}/report`, key: "nav.report" });
     }
   }
+  // Refonte A1 : coordinateur (ses niveaux dans son école) et groupe scolaire (ses écoles).
+  if (r.has("dept_lead")) {
+    const schoolId = me.department_scopes[0]?.school_id;
+    if (schoolId) items.push({ href: `/department/${schoolId}`, key: "nav.department" });
+  }
+  if (r.has("group_admin")) {
+    const org = me.organizations[0];
+    if (org) items.push({ href: `/group/${org.id}`, key: "nav.group" });
+  }
   if (r.has("it_admin")) items.push({ href: "/it", key: "nav.security" });
   if (r.has("linguist")) items.push({ href: "/linguist", key: "nav.linguist" });
   if (r.has("student") && me.own_student_id) items.push({ href: "/student", key: "nav.session" });

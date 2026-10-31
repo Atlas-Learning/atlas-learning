@@ -5,8 +5,25 @@ export interface Me {
   roles: string[];
   schools: { id: string; name: string }[];
   classrooms: { id: string; name: string; school_id: string; grade?: number | null }[];
+  // Refonte A1 : organisations lues (group_admin) ou administrées (it_admin) ;
+  // couples (école, niveau) d'un dept_lead.
+  organizations: { id: string; name: string }[];
+  department_scopes: { school_id: string; grade: number }[];
   child_student_ids: string[];
   own_student_id: string | null;
+}
+
+// Attribution d'un rôle hors roster (dept_lead, group_admin) — /admin/roles.
+export interface RoleGrant {
+  membership_id: string;
+  user_id: string;
+  email: string;
+  role: "dept_lead" | "group_admin";
+  organization_id: string | null;
+  school_id: string | null;
+  school_name: string | null;
+  grades: number[];
+  source: "roster" | "manual";
 }
 
 // B4 : payload `standard` ADDITIF — présent UNIQUEMENT si la vue curriculaire du

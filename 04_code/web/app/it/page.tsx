@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
+import { AppShell, useMe } from "@/components/AppShell";
 import { useLang } from "@/components/LanguageProvider";
 import { Button, Card, Chip, Loading, SectionTitle } from "@/components/ui";
 import { EthicsStance } from "@/components/EthicsStance";
@@ -54,6 +54,9 @@ const FRAMEWORK_KEY: Record<string, DictKey> = {
 
 function ITView() {
   const { t, lang } = useLang();
+  const me = useMe();
+  // Q14 : le framework affiché se règle côté Atlas ; l'école le lit sans le modifier.
+  const canSetCurriculum = me?.roles.includes("super_admin") ?? false;
   const [data, setData] = useState<Integration | null>(null);
   const [runs, setRuns] = useState<RosterRun[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
@@ -248,7 +251,9 @@ function ITView() {
               {t(FRAMEWORK_KEY[curriculum.curriculum_view] ?? "curriculum.fw.atlas")}
             </Chip>
           </div>
-          <p className="mb-3 text-xs text-sand-500">{t("curriculum.hint")}</p>
+          <p className="mb-3 text-xs text-sand-500">
+            {canSetCurriculum ? t("curriculum.hint") : t("curriculum.readonly")}
+          </p>
           <label className="block text-xs text-sand-400" htmlFor="curriculum-view">
             {t("curriculum.select")}
           </label>
@@ -256,7 +261,7 @@ function ITView() {
             id="curriculum-view"
             value={curriculum.curriculum_view}
             onChange={(e) => setCurriculumView(e.target.value)}
-            disabled={busy}
+            disabled={busy || !canSetCurriculum}
             className="mt-1 w-full max-w-xs rounded-lg border border-sand-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 disabled:opacity-50 sm:w-auto"
           >
             {curriculum.available_frameworks.map((fw) => (

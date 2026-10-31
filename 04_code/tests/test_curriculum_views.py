@@ -106,7 +106,8 @@ def _setup():
 
     teacher = AppUser(email="t@x.io"); parent = AppUser(email="p@x.io")
     it_admin = AppUser(email="it@x.io"); ped_admin = AppUser(email="ped@x.io")
-    s.add_all([teacher, parent, it_admin, ped_admin]); s.flush()
+    super_admin = AppUser(email="ops@atlas.io")
+    s.add_all([teacher, parent, it_admin, ped_admin, super_admin]); s.flush()
     s.add_all([
         Membership(user_id=teacher.id, role=Role.TEACHER, school_id=sa_.id),
         TeacherClassroom(user_id=teacher.id, classroom_id=c1.id),
@@ -114,11 +115,13 @@ def _setup():
         ParentStudent(user_id=parent.id, student_id=students[0].id),
         Membership(user_id=it_admin.id, role=Role.IT_ADMIN, organization_id=o.id, school_id=sa_.id),
         Membership(user_id=ped_admin.id, role=Role.PED_ADMIN, organization_id=o.id, school_id=sa_.id),
+        Membership(user_id=super_admin.id, role=Role.SUPER_ADMIN),
     ])
     s.commit()
 
     ids = dict(org=o.id, school=sa_.id, c1=c1.id, student=students[0].id,
-               teacher=teacher.id, parent=parent.id, it_admin=it_admin.id, ped_admin=ped_admin.id)
+               teacher=teacher.id, parent=parent.id, it_admin=it_admin.id, ped_admin=ped_admin.id,
+               super_admin=super_admin.id)
     app.dependency_overrides[get_db] = lambda: s
     return TestClient(app), ids, s
 
@@ -158,23 +161,36 @@ def test_admin_curriculum_get_current_view_and_frameworks():
     _teardown()
 
 
+def test_admin_curriculum_set_view_is_super_admin_only():
+    # Refonte (Q14, 2026-10-31) : le choix du curriculum est une opération Atlas. Les admins de
+    # l'école le lisent (GET, test ci-dessus) mais ne le changent pas.
+    client, ids, s = _setup()
+    for uid in (ids["it_admin"], ids["ped_admin"]):
+        r = client.post("/admin/curriculum", json={"curriculum_view": "CCSS_M"}, headers=_auth(uid))
+        assert r.status_code == 403
+    assert s.get(Organization, ids["org"]).curriculum_view == CurriculumView.ATLAS  # inchangé
+
+
 def test_admin_curriculum_set_view_persists_and_audits():
     client, ids, s = _setup()
-    r = client.post("/admin/curriculum", json={"curriculum_view": "CCSS_M"},
-                    headers=_auth(ids["it_admin"]))
+    # Le super admin n'a pas de membership d'organisation : il nomme le tenant visé.
+    assert client.post("/admin/curriculum", json={"curriculum_view": "CCSS_M"},
+                       headers=_auth(ids["super_admin"])).status_code == 400
+    r = client.post(f"/admin/curriculum?organization_id={ids['org']}",
+                    json={"curriculum_view": "CCSS_M"}, headers=_auth(ids["super_admin"]))
     assert r.status_code == 200 and r.json()["curriculum_view"] == "CCSS_M"
     assert s.get(Organization, ids["org"]).curriculum_view == CurriculumView.CCSS_M
     entries = s.execute(select(AuditLog).where(AuditLog.action == "curriculum.set_view")).scalars().all()
     assert len(entries) == 1
-    assert entries[0].user_id == ids["it_admin"]
+    assert entries[0].user_id == ids["super_admin"]
     assert entries[0].details["curriculum_view"] == "CCSS_M"
     _teardown()
 
 
 def test_admin_curriculum_rejects_unknown_framework():
     client, ids, s = _setup()
-    r = client.post("/admin/curriculum", json={"curriculum_view": "IB_PYP"},
-                    headers=_auth(ids["it_admin"]))
+    r = client.post(f"/admin/curriculum?organization_id={ids['org']}",
+                    json={"curriculum_view": "IB_PYP"}, headers=_auth(ids["super_admin"]))
     assert r.status_code == 400
     assert s.get(Organization, ids["org"]).curriculum_view == CurriculumView.ATLAS  # inchangé
     _teardown()

@@ -16,5 +16,5 @@ Ne pas trancher ces points dans le code. Les marquer `[À CLARIFIER]` et les rem
 | Q10 | Contenu des documents fournisseurs (DPA, réponses §5.5 ADEK, consentement parental) | D5 | À rédiger hors code ; l'écran affiche « à venir » tant qu'ils manquent |
 | Q11 | Statut d'Atlas au regard de la Technology and AI Policy de l'ADEK | Commercial | Hors code ; aucune mention « approuvé ADEK » dans l'UI |
 | Q12 | Mode tablette partagée si les élèves n'ont pas d'appareil | B1 | Hors périmètre du premier pilote |
-| Q13 | Provisioning des memberships `dept_lead` (avec ses niveaux) et `group_admin` : aucun endpoint ni CLI ne les crée aujourd'hui (le roster ne connaît pas ces rôles) | A1 → D1, D3 | Script `scripts/grant_role.py` pour le pilote ; écran admin IT (I1) plus tard |
-| Q14 | Lecture du curriculum par `group_admin` et `dept_lead` (`GET /admin/curriculum` reste réservé aux it/ped admin) | C2, C3 | Ouvrir en lecture seule avec les API `/ops/curricula/*` de la phase C |
+| Q13 | ~~Provisioning des memberships `dept_lead` et `group_admin`~~ **Tranché le 2026-10-31** : attribution par email, SSO ou lien magique, voir `06-attribution-des-roles.md` | — | Reste : écran admin IT (I1) |
+| Q14 | ~~Lecture du curriculum par `group_admin` et `dept_lead`~~ **Tranché le 2026-10-31** : le choix du curriculum affiché est réservé au super admin Atlas (`POST /admin/curriculum?organization_id=`) ; les admins d'école le lisent ; les autres rôles le verront via la phase C | C2, C3 | — |

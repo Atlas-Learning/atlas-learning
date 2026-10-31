@@ -18,7 +18,7 @@ Relevé le 2026-10-31 sur `origin/main` (commit `97773c3`). Le spec de `docs/ref
 | Rôle `content_reviewer` : « Existe » | **Absent** de `Role` (`src/models/base.py`) : 7 rôles (`super_admin`, `it_admin`, `ped_admin`, `teacher`, `parent`, `student`, `linguist`) |
 | Suivre le modèle de `0022_role_content_reviewer` | Le modèle disponible est `0017_role_linguist` (ajout d'une valeur d'enum, no-op SQLite, `ALTER TYPE` Postgres) |
 
-**Tranché le 2026-10-31** (GitHub est à jour, pas de code local en avance) : A1 est livré en deux migrations, `0021_role_dept_lead_group_admin` (enum) et `0022_classroom_grade_dept_scope` (schéma). Les numéros de `03-modele-de-donnees.md` se décalent donc de −2 (son « 0024 » = la prochaine migration 0023, etc.). Le rôle `content_reviewer` reste **à créer** : il est nécessaire au ticket A4 (« super admin et relecteur ») et à la matrice de `02`.
+**Tranché le 2026-10-31** (GitHub est à jour, pas de code local en avance) : A1 est livré en deux migrations, `0021_role_dept_lead_group_admin` (enum) et `0022_classroom_grade_dept_scope` (schéma). Les numéros de `03-modele-de-donnees.md` se décalent donc de −1 à partir de là : son « 0024 » (versions et signalements, A2) est `0023_item_versions_flags`, son « 0025 » (check-ins, B1) sera `0024`, etc. Le rôle `content_reviewer` reste **à créer** : il est nécessaire au ticket A4 (« super admin et relecteur ») et à la matrice de `02`.
 
 ## Fichiers cités qui n'existent pas
 

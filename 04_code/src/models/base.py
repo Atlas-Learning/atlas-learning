@@ -104,6 +104,27 @@ class ItemStatus(str, enum.Enum):
     QUARANTINED = "quarantined"
 
 
+class ItemOrigin(str, enum.Enum):
+    """Source d'un item (refonte A2) : gabarit déterministe Atlas, ou item d'école (phase E)."""
+    ATLAS_TEMPLATE = "atlas_template"
+    SCHOOL = "school"
+
+
+class ItemFlagReason(str, enum.Enum):
+    """Motif d'un signalement d'item par un enseignant, un coordinateur ou le staff (A2)."""
+    WRONG_ANSWER_KEY = "wrong_answer_key"
+    SEVERAL_CORRECT = "several_correct"
+    UNCLEAR_WORDING = "unclear_wording"
+    ARABIC = "arabic"
+    OTHER = "other"
+
+
+class ItemFlagStatus(str, enum.Enum):
+    OPEN = "open"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
 class AnswerFormat(str, enum.Enum):
     MCQ = "MCQ"
     NUMERIC = "NUMERIC"

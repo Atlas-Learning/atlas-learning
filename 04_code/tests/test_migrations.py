@@ -364,6 +364,62 @@ def test_0021_0022_roles_refonte_et_portee_dept_lead_reversibles():
         os.unlink(tmp.name)
 
 
+def test_0023_item_versions_et_item_flag_reversibles():
+    # Refonte A2 : colonnes de version sur item (défauts serveur pour les lignes existantes) +
+    # table item_flag. La cohérence colonne à colonne avec les modèles est couverte par
+    # test_0019_schema_from_scratch_coherent_avec_les_modeles.
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "0022_classroom_grade_dept_scope")
+        engine = sa.create_engine(url)
+        comp, item_id = _hex(uuid.uuid4()), _hex(uuid.uuid4())
+        with engine.begin() as conn:
+            conn.execute(sa.text(
+                "INSERT INTO competency (id, code, label_en, label_ar, subject, grade, difficulty_prior, status, "
+                "created_at, updated_at) VALUES (:id, 'M.A', 'a', 'b', 'MATH', 4, 1200.0, 'active', "
+                "'2026-01-01 00:00:00', '2026-01-01 00:00:00')"), {"id": comp})
+            conn.execute(sa.text(
+                "INSERT INTO item (id, competency_id, content_en, content_ar, answer_format, difficulty_prior, "
+                "difficulty_elo, n_responses, context_tags, status, provenance, ar_validated, created_at, updated_at) "
+                "VALUES (:id, :c, '{}', '{}', 'MCQ', 1200.0, 1200.0, 0, '{}', 'active', '{}', 1, "
+                "'2026-01-01 00:00:00', '2026-01-01 00:00:00')"), {"id": item_id, "c": comp})
+        command.upgrade(cfg, "head")
+        with engine.connect() as conn:
+            row = conn.execute(sa.text(
+                "SELECT origin, version, template_key, supersedes_id FROM item")).one()
+            assert tuple(row) == ("atlas_template", 1, None, None)       # défauts sur l'existant
+        with engine.begin() as conn:
+            conn.execute(sa.text(
+                "INSERT INTO item_flag (id, item_id, reason, status, created_at) "
+                "VALUES (:id, :i, 'wrong_answer_key', 'open', '2026-01-02 00:00:00')"),
+                {"id": _hex(uuid.uuid4()), "i": item_id})
+        insp = sa.inspect(engine)
+        fks = {f["referred_table"]: f["options"] for f in insp.get_foreign_keys("item_flag")}
+        assert fks["item"] == {"ondelete": "CASCADE"} and fks["school"] == {"ondelete": "SET NULL"}
+        assert any(ix["name"] == "ix_item_template_key" for ix in insp.get_indexes("item"))
+
+        command.downgrade(cfg, "0022_classroom_grade_dept_scope")
+        insp = sa.inspect(engine)
+        assert "item_flag" not in insp.get_table_names()
+        cols = {c["name"] for c in insp.get_columns("item")}
+        assert not ({"origin", "template_key", "version", "supersedes_id", "calibration_reset_at",
+                     "owner_school_id"} & cols)
+        with engine.connect() as conn:                                  # la ligne item survit
+            assert conn.execute(sa.text("SELECT COUNT(*) FROM item")).scalar_one() == 1
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

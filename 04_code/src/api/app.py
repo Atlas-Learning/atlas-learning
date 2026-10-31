@@ -51,8 +51,8 @@ from src.items.arabic import (
     ar_math_preserved,
     translate_to_arabic,
 )
-from src.models.base import CurriculumView, Role
-from src.models.item import Item
+from src.models.base import CurriculumView, ItemFlagReason, ItemFlagStatus, Role
+from src.models.item import Item, ItemFlag
 from src.models.measurement import School, Student
 from src.models.audit import AuditLog
 from src.models.org import (
@@ -84,10 +84,12 @@ from src.rbac.authz import (
     can_access_classroom,
     can_access_school,
     can_access_student,
+    can_flag_item,
     can_grant_dept_lead,
     can_manage_roles,
     can_manage_school,
     can_review_arabic,
+    can_review_items,
     is_super,
 )
 from src.rbac import grants
@@ -1620,6 +1622,116 @@ def linguist_flag(item_id: uuid.UUID, body: LinguistFlagIn,
                resource_type="item", resource_id=it.id, details={"reason": reason[:200]})
     s.commit()
     return _linguist_queue_payload(it)
+
+
+# ---------- signalements d'items (refonte A2) ----------
+#
+# Un enseignant (ou un coordinateur, un linguiste, le super admin) signale un item ; le
+# signalement entre dans la file (super admin aujourd'hui, relecteur au ticket A4). Son
+# acceptation sort l'item du pool par la machine à états (review.resolve_flag → promote).
+
+class ItemFlagIn(BaseModel):
+    reason: str                        # wrong_answer_key | several_correct | unclear_wording | arabic | other
+    comment: Optional[str] = None
+
+
+class ItemFlagResolveIn(BaseModel):
+    accept: bool
+    quarantine: bool = True            # accepté → sortie du pool si l'item est `active`
+
+
+def _actor_school_id(ctx: UserContext, s: Session) -> Optional[uuid.UUID]:
+    """École d'origine d'un signalement : celle de l'acteur si elle est unique, sinon None."""
+    schools = set(ctx.school_ids) | {sid for sid, _ in ctx.dept_scopes}
+    if ctx.classroom_ids:
+        schools |= set(s.execute(
+            select(Classroom.school_id).where(Classroom.id.in_(list(ctx.classroom_ids)))
+        ).scalars())
+    return next(iter(schools)) if len(schools) == 1 else None
+
+
+def _flag_payload(fl: ItemFlag, it: Optional[Item]) -> dict:
+    out = {
+        "id": str(fl.id), "item_id": str(fl.item_id),
+        "school_id": str(fl.school_id) if fl.school_id else None,
+        "raised_by": str(fl.raised_by) if fl.raised_by else None,
+        "reason": fl.reason.value, "comment": fl.comment, "status": fl.status.value,
+        "created_at": fl.created_at.isoformat() if fl.created_at else None,
+        "resolved_by": str(fl.resolved_by) if fl.resolved_by else None,
+        "resolved_at": fl.resolved_at.isoformat() if fl.resolved_at else None,
+    }
+    if it is not None:
+        out["item"] = {
+            "competency_id": str(it.competency_id), "status": it.status.value,
+            "version": it.version, "template_key": it.template_key, "origin": it.origin.value,
+            "stem_en": (it.content_en or {}).get("stem"),
+            "stem_ar": (it.content_ar or {}).get("stem") if it.content_ar else None,
+        }
+    return out
+
+
+@app.post("/items/{item_id}/flags")
+def flag_item_ep(item_id: uuid.UUID, body: ItemFlagIn, ctx: UserContext = Depends(get_context),
+                 s: Session = Depends(get_db)):
+    if not can_flag_item(ctx):
+        raise HTTPException(status_code=403, detail="rôle enseignant, coordinateur ou staff requis")
+    it = s.get(Item, item_id)
+    if it is None or it.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="item introuvable")
+    try:
+        reason = ItemFlagReason(body.reason)
+    except ValueError:
+        raise HTTPException(status_code=400,
+                            detail=f"motif inconnu (attendu : {[r.value for r in ItemFlagReason]})")
+    school_id = _actor_school_id(ctx, s)
+    fl = review.flag_item(s, it, raised_by=ctx.user_id, reason=reason, comment=body.comment,
+                          school_id=school_id)
+    log_action(s, action="item.flag", school_id=school_id, user_id=ctx.user_id,
+               resource_type="item", resource_id=it.id,
+               details={"flag_id": str(fl.id), "reason": reason.value})
+    s.commit()
+    return _flag_payload(fl, it)
+
+
+@app.get("/items/flags")
+def list_item_flags(status: str = "open", limit: int = 200,
+                    ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """File des signalements (super admin ; relecteur au ticket A4). `status=all` pour tout."""
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    st: Optional[ItemFlagStatus]
+    if status == "all":
+        st = None
+    else:
+        try:
+            st = ItemFlagStatus(status)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="statut inconnu (open | accepted | rejected | all)")
+    flags = review.list_flags(s, status=st, limit=min(max(limit, 1), 1000))
+    items = {it.id: it for it in s.execute(
+        select(Item).where(Item.id.in_([f.item_id for f in flags]))).scalars()} if flags else {}
+    return {"status": status, "flags": [_flag_payload(f, items.get(f.item_id)) for f in flags]}
+
+
+@app.post("/items/flags/{flag_id}/resolve")
+def resolve_item_flag(flag_id: uuid.UUID, body: ItemFlagResolveIn,
+                      ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    fl = s.get(ItemFlag, flag_id)
+    if fl is None:
+        raise HTTPException(status_code=404, detail="signalement introuvable")
+    try:
+        review.resolve_flag(s, fl, resolver=ctx.user_id, accept=body.accept, quarantine=body.quarantine)
+    except review.InvalidTransition as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    it = s.get(Item, fl.item_id)
+    log_action(s, action="item.flag_resolve", user_id=ctx.user_id, resource_type="item",
+               resource_id=fl.item_id,
+               details={"flag_id": str(fl.id), "accepted": body.accept,
+                        "item_status": it.status.value if it else None})
+    s.commit()
+    return _flag_payload(fl, it)
 
 
 @app.get("/schools/{school_id}/overview")

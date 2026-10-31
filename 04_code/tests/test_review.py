@@ -137,6 +137,40 @@ def test_edit_revalidates_content():
         pass
 
 
+def test_a2_resolve_flag_never_bypasses_allowed_transitions():
+    # Refonte A2 : accepter un signalement ne « saute » jamais d'étape — seul active → quarantined
+    # est possible ; tout autre statut reste tel quel, et ALLOWED_TRANSITIONS est inchangé.
+    from src.items.review import ALLOWED_TRANSITIONS, flag_item, resolve_flag
+    from src.models.base import ItemFlagReason
+    from src.models.org import AppUser
+    assert ALLOWED_TRANSITIONS == {
+        ItemStatus.AI_GENERATED: {ItemStatus.HUMAN_REVIEWED},
+        ItemStatus.HUMAN_REVIEWED: {ItemStatus.LINGUIST_VALIDATED},
+        ItemStatus.LINGUIST_VALIDATED: {ItemStatus.ACTIVE},
+        ItemStatus.ACTIVE: {ItemStatus.QUARANTINED},
+        ItemStatus.QUARANTINED: {ItemStatus.ACTIVE},
+    }
+    s = _session()
+    reviewer = AppUser(email="rev@atlas.io"); s.add(reviewer); s.commit()
+    c = _competency(s)
+    items = insert_generated_items(s, _generated(c.id, 3))
+    for it, status in zip(items, (ItemStatus.AI_GENERATED, ItemStatus.HUMAN_REVIEWED,
+                                  ItemStatus.LINGUIST_VALIDATED)):
+        it.status = status; s.commit()
+        fl = flag_item(s, it, raised_by=None, reason=ItemFlagReason.WRONG_ANSWER_KEY)
+        resolve_flag(s, fl, resolver=reviewer.id, accept=True); s.commit()
+        assert it.status == status
+
+
+def test_a2_inserted_items_carry_template_key():
+    s = _session()
+    c = _competency(s)
+    gen = _generated(c.id, 1)
+    gen[0].template_key = "MATH.G4.NF.ADD_LIKE#00"
+    it = insert_generated_items(s, gen)[0]
+    assert it.template_key == "MATH.G4.NF.ADD_LIKE#00" and it.version == 1 and it.supersedes_id is None
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

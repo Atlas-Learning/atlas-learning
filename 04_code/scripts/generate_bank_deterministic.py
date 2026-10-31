@@ -53,6 +53,7 @@ def main() -> None:
                     difficulty_prior=it["difficulty_prior"],          # par item (≠ flat)
                     context_tags={**it["context_tags"], "gen": "deterministic"},
                     provenance={"generator": "deterministic", "method": "exact-fraction"},
+                    template_key=it["template_key"],
                 )
                 for it in items
             ]

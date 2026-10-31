@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import uuid
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -14,8 +15,8 @@ from sqlalchemy.orm import Session
 
 from src.items.arabic import ar_fidelity_errors
 from src.items.generation import GeneratedItem
-from src.models.base import ItemStatus, utcnow
-from src.models.item import Item, ItemContent
+from src.models.base import ItemFlagReason, ItemFlagStatus, ItemStatus, utcnow
+from src.models.item import Item, ItemContent, ItemFlag
 
 # Cycle de vie autorisé : ai_generated → human_reviewed → linguist_validated → active.
 # quarantined : sortie/réhabilitation du pool. Aucun saut d'étape.
@@ -59,6 +60,7 @@ def insert_generated_items(session: Session, generated: List[GeneratedItem]) -> 
             context_tags=dict(g.context_tags),
             status=ItemStatus.AI_GENERATED,
             provenance=dict(g.provenance or {}),
+            template_key=g.template_key,
         )
         session.add(item)
         items.append(item)
@@ -197,3 +199,106 @@ def promote_to_active(session: Session, item: Item, reviewer: str) -> Item:
     if not item.ar_validated:
         raise InvalidTransition("Promotion active refusée : ar_validated requis.")
     return promote(session, item, ItemStatus.ACTIVE, reviewer=reviewer)
+
+
+# --- Refonte A2 : signalements et versions ---------------------------------------------
+#
+# Un signalement n'altère JAMAIS le statut d'un item par lui-même. Il entre dans la file de
+# revue ; son acceptation passe par la machine à états (`promote` → quarantined, uniquement
+# depuis `active`). Aucun raccourci, aucun UPDATE direct du statut (invariant 6).
+
+def flag_item(session: Session, item: Item, *, raised_by: Optional[uuid.UUID],
+              reason: ItemFlagReason, comment: Optional[str] = None,
+              school_id: Optional[uuid.UUID] = None) -> ItemFlag:
+    """Signale un item. Ne touche ni au statut ni au contenu. Ne commit pas."""
+    if item.deleted_at is not None:
+        raise InvalidTransition("Item supprimé : signalement impossible.")
+    flag = ItemFlag(item_id=item.id, school_id=school_id, raised_by=raised_by,
+                    reason=reason, comment=(comment or "").strip() or None)
+    session.add(flag)
+    session.flush()
+    return flag
+
+
+def list_flags(session: Session, *, status: Optional[ItemFlagStatus] = ItemFlagStatus.OPEN,
+               limit: int = 200) -> List[ItemFlag]:
+    """File des signalements (les plus anciens d'abord). `status=None` = tous."""
+    stmt = select(ItemFlag)
+    if status is not None:
+        stmt = stmt.where(ItemFlag.status == status)
+    return list(session.execute(stmt.order_by(ItemFlag.created_at).limit(limit)).scalars())
+
+
+def open_flag_count(session: Session, item_id: uuid.UUID) -> int:
+    return len(session.execute(
+        select(ItemFlag.id).where(ItemFlag.item_id == item_id, ItemFlag.status == ItemFlagStatus.OPEN)
+    ).all())
+
+
+def resolve_flag(session: Session, flag: ItemFlag, *, resolver: uuid.UUID, accept: bool,
+                 quarantine: bool = True) -> ItemFlag:
+    """Tranche un signalement. Accepté + `quarantine` : l'item sort du pool servi — par
+    `promote(... QUARANTINED)`, donc seulement s'il est `active` ; un item encore en revue
+    garde son statut (il sera corrigé au gabarit, A3). Refusé : l'item n'est pas touché."""
+    if flag.status != ItemFlagStatus.OPEN:
+        raise InvalidTransition("Signalement déjà tranché.")
+    item = session.get(Item, flag.item_id)
+    flag.status = ItemFlagStatus.ACCEPTED if accept else ItemFlagStatus.REJECTED
+    flag.resolved_by = resolver
+    flag.resolved_at = utcnow()
+    if accept and quarantine and item is not None and item.status == ItemStatus.ACTIVE:
+        promote(session, item, ItemStatus.QUARANTINED, reviewer=str(resolver))
+        _stamp_reviewer(item, str(resolver), quarantined=True,
+                        quarantine_reason=f"signalement accepté : {flag.reason.value}")
+    session.flush()
+    return flag
+
+
+def supersede(session: Session, old: Item, *, content_en: dict, by: str,
+              content_ar: Optional[dict] = None, context_tags: Optional[dict] = None,
+              difficulty_prior: Optional[float] = None) -> Item:
+    """Nouvelle version d'un item (énoncé ou réponse corrigés au gabarit, A3).
+
+    La nouvelle version repart en `ai_generated` (revue complète), `version + 1`,
+    `supersedes_id` posé, même gabarit et même compétence. L'ancienne version sort du pool :
+    `active → quarantined` par la machine à états ; une version jamais publiée est rejetée
+    (soft delete, jamais détruite). Les réponses existantes restent attachées à l'ancienne."""
+    ItemContent.model_validate(content_en)
+    if content_ar:
+        ItemContent.model_validate(content_ar)
+    new = Item(
+        competency_id=old.competency_id,
+        content_en=content_en,
+        content_ar=content_ar,
+        answer_format=old.answer_format,
+        difficulty_prior=old.difficulty_prior if difficulty_prior is None else difficulty_prior,
+        context_tags=dict(context_tags if context_tags is not None else (old.context_tags or {})),
+        status=ItemStatus.AI_GENERATED,
+        provenance={**{k: v for k, v in (old.provenance or {}).items()
+                       if k in ("generator", "method", "provider", "model")},
+                    "superseded_from": str(old.id), "regenerated_by": by},
+        origin=old.origin,
+        template_key=old.template_key,
+        version=old.version + 1,
+        supersedes_id=old.id,
+        owner_school_id=old.owner_school_id,
+    )
+    session.add(new)
+    if old.status == ItemStatus.ACTIVE:
+        promote(session, old, ItemStatus.QUARANTINED, reviewer=by)
+        _stamp_reviewer(old, by, quarantined=True, quarantine_reason="remplacé par une nouvelle version")
+    elif old.status != ItemStatus.QUARANTINED and old.deleted_at is None:
+        reject(session, old, reviewer=by, reason="remplacé par une nouvelle version")
+    session.commit()
+    return new
+
+
+def reset_calibration(session: Session, item: Item, *, by: str) -> Item:
+    """Remet la calibration à zéro sans changer de version (correction qui ne touche ni
+    l'énoncé ni la réponse) : les réponses antérieures ne pèsent plus sur `difficulty_elo`."""
+    item.calibration_reset_at = utcnow()
+    item.n_responses = 0
+    item.difficulty_elo = item.difficulty_prior
+    _stamp_reviewer(item, by, calibration_reset=True)
+    session.commit()
+    return item

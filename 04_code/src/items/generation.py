@@ -42,6 +42,8 @@ class GeneratedItem(BaseModel):
     context_tags: dict
     status: ItemStatus = ItemStatus.AI_GENERATED
     provenance: dict = Field(default_factory=dict)
+    # Refonte A2 : gabarit d'origine (ex. `MATH.G4.NF.ADD_LIKE#03`), None pour un item LLM.
+    template_key: Optional[str] = None
 
 
 _SYSTEM = (

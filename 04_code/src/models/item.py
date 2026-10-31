@@ -10,16 +10,20 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import JSON, DateTime, ForeignKey
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from .base import (
     AnswerFormat,
     Base,
+    ItemFlagReason,
+    ItemFlagStatus,
+    ItemOrigin,
     ItemStatus,
     TimestampMixin,
     native_enum,
+    utcnow,
     uuid_pk,
 )
 
@@ -70,6 +74,30 @@ class Item(Base, TimestampMixin):
     provenance: Mapped[dict] = mapped_column(JSONType, default=dict)
     ar_validated: Mapped[bool] = mapped_column(default=False)
 
+    # --- Refonte A2 : origine, gabarit, versions (docs/refonte/03, « 0024 ») ---
+    origin: Mapped[ItemOrigin] = mapped_column(
+        native_enum(ItemOrigin, "item_origin"),
+        default=ItemOrigin.ATLAS_TEMPLATE, server_default="atlas_template",
+    )
+    # Gabarit d'origine (ex. `MATH.G4.NF.ADD_LIKE#03`) : une faute se corrige AU GABARIT, puis
+    # tous les items du gabarit repartent en nouvelle version (A3). NULL = banque antérieure
+    # à A2, regénérer avec scripts/generate_bank_deterministic.py --reset pour le remplir.
+    template_key: Mapped[Optional[str]] = mapped_column(String, index=True, default=None)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    # Item remplacé par cette version. Ses réponses restent attachées à l'ancienne version.
+    supersedes_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("item.id", ondelete="SET NULL"), default=None
+    )
+    # Posé par review.reset_calibration : les réponses antérieures ne pèsent plus sur
+    # difficulty_elo (n_responses repart de 0, difficulty_elo de difficulty_prior).
+    calibration_reset_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    # Items d'école seulement (phase E) : l'école propriétaire ; l'item part avec elle.
+    owner_school_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("school.id", ondelete="CASCADE"), default=None, index=True
+    )
+
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
 
     @validates("content_en", "content_ar")
@@ -82,4 +110,37 @@ class Item(Base, TimestampMixin):
         return value
 
     def __repr__(self) -> str:
-        return f"<Item {self.id} comp={self.competency_id} {self.answer_format}>"
+        return f"<Item {self.id} comp={self.competency_id} {self.answer_format} v{self.version}>"
+
+
+class ItemFlag(Base):
+    """Signalement d'un item (refonte A2) : un enseignant, un coordinateur ou le staff signale
+    une réponse fausse, plusieurs bonnes réponses, un énoncé ambigu, un problème d'arabe…
+
+    Le signalement n'altère JAMAIS le statut de l'item par lui-même : il entre dans la file de
+    revue ; l'acceptation passe par la machine à états (`review.resolve_flag` → quarantaine
+    via `promote`). `school_id` et `raised_by` sont informatifs (tenant d'origine, auteur) :
+    ils survivent en NULL à la suppression de l'école ou du compte (aucune PII élève ici).
+    """
+    __tablename__ = "item_flag"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("item.id", ondelete="CASCADE"), index=True
+    )
+    school_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("school.id", ondelete="SET NULL"), default=None, index=True
+    )
+    raised_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL"), default=None
+    )
+    reason: Mapped[ItemFlagReason] = mapped_column(native_enum(ItemFlagReason, "item_flag_reason"))
+    comment: Mapped[Optional[str]] = mapped_column(String, default=None)
+    status: Mapped[ItemFlagStatus] = mapped_column(
+        native_enum(ItemFlagStatus, "item_flag_status"),
+        default=ItemFlagStatus.OPEN, server_default="open", index=True,
+    )
+    resolved_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL"), default=None
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)

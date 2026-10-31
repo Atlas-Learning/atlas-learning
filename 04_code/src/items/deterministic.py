@@ -584,8 +584,16 @@ def bank_items(code: str, base_prior: float) -> List[dict]:
     C'est ici que se branche la couche générique de difficulté.
     """
     out = []
-    for content in generate_for(code):
+    for i, content in enumerate(generate_for(code)):
         feats = fraction_features(code, content)
         diff = difficulty_from_score(base_prior, fraction_complexity(feats))
-        out.append({"content": content, "context_tags": feats, "difficulty_prior": diff})
+        out.append({"content": content, "context_tags": feats, "difficulty_prior": diff,
+                    # Refonte A2 : gabarit = générateur (code) + rang dans sa liste — stable
+                    # tant que l'ordre des données du générateur ne change pas.
+                    "template_key": template_key(code, i)})
     return out
+
+
+def template_key(code: str, index: int) -> str:
+    """Clé de gabarit d'un item déterministe : `MATH.G4.NF.ADD_LIKE#03`."""
+    return f"{code}#{index:02d}"

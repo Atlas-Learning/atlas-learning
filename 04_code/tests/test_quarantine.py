@@ -117,6 +117,21 @@ def test_quarantine_is_reversible():
     assert it in active_pool(s)
 
 
+def test_a2_accepted_flag_quarantines_like_drift_and_is_reversible():
+    from src.items.review import flag_item, resolve_flag
+    from src.models.base import ItemFlagReason
+    from src.models.org import AppUser
+    s = _session()
+    it = _item(s)
+    reviewer = AppUser(email="rev@atlas.io"); s.add(reviewer); s.commit()
+    promote_to_active(s, it, reviewer="r")
+    fl = flag_item(s, it, raised_by=None, reason=ItemFlagReason.WRONG_ANSWER_KEY)
+    resolve_flag(s, fl, resolver=reviewer.id, accept=True); s.commit()
+    assert it.status == ItemStatus.QUARANTINED and it not in active_pool(s)
+    promote(s, it, ItemStatus.ACTIVE, reviewer="r")      # réhabilitation : même chemin
+    assert it in active_pool(s)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

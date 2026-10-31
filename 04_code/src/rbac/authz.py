@@ -63,6 +63,14 @@ def can_review_arabic(ctx: UserContext) -> bool:
     return ctx.has(Role.LINGUIST, Role.SUPER_ADMIN)
 
 
+def can_run_checkin(ctx: UserContext, classroom_id) -> bool:
+    """Ouvrir / clore un check-in d'une classe (refonte B1) : l'enseignant de CETTE classe, ou
+    le super admin. Le coordinateur et la direction lisent (progression anonyme), n'écrivent pas."""
+    if is_super(ctx):
+        return True
+    return Role.TEACHER in ctx.roles and classroom_id in ctx.classroom_ids
+
+
 def can_flag_item(ctx: UserContext) -> bool:
     """Signaler un item de la banque (refonte A2) : enseignant, coordinateur, linguiste, super
     admin — matrice de docs/refonte/02. (content_reviewer : ticket A4.)"""

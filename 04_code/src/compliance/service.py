@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from src.audit import log_action
 from src.models.audit import AuditLog
+from src.models.checkin import CheckIn
 from src.models.measurement import School, Student
 from src.models.org import (
     AppUser, Classroom, Membership, Organization, RosterRun, StudentClassroom,
@@ -87,6 +88,9 @@ def export_tenant(s: Session, org: Organization) -> dict:
         select(RosterRun).where(RosterRun.organization_id == org.id)
         .order_by(RosterRun.started_at.desc())
     ).scalars().all()
+    checkins = s.execute(
+        select(CheckIn).where(CheckIn.school_id.in_(school_ids)).order_by(CheckIn.opened_at)
+    ).scalars().all() if school_ids else []
 
     return {
         "organization": {"id": str(org.id), "name": org.name, "domain": org.domain,
@@ -109,6 +113,12 @@ def export_tenant(s: Session, org: Organization) -> dict:
         "roster_runs": [{"id": str(r.id), "status": r.status, "summary": r.summary,
                          "started_at": r.started_at.isoformat() if r.started_at else None}
                         for r in runs],
+        # Refonte B1 : check-ins (structure et membres — données du tenant, contrôleur = école)
+        "checkins": [{"id": str(c.id), "school_id": str(c.school_id), "classroom_id": str(c.classroom_id),
+                      "kind": c.kind.value, "status": c.status.value, "student_ids": c.student_ids,
+                      "opened_at": c.opened_at.isoformat() if c.opened_at else None,
+                      "closed_at": c.closed_at.isoformat() if c.closed_at else None}
+                     for c in checkins],
     }
 
 
@@ -126,7 +136,13 @@ def student_in_org(s: Session, org: Organization, student_id: uuid.UUID) -> Opti
 def erase_student(s: Session, student: Student) -> dict:
     """Droit à l'oubli d'un sujet : suppression DURE (réponses/abilities/inscriptions cascade) + compte."""
     student_id, user_id = student.id, student.user_id
+    # Refonte B1 : un check-in ciblé porte la liste de ses membres (JSON) → on l'en retire.
+    for ci in s.execute(select(CheckIn).where(CheckIn.school_id == student.school_id,
+                                               CheckIn.student_ids.is_not(None))).scalars():
+        if str(student_id) in (ci.student_ids or []):
+            ci.student_ids = [x for x in ci.student_ids if x != str(student_id)]
     s.delete(student)            # cascade : response, ability, student_classroom, parent_student
+                                 # ; assessment_session.checkin_id : SET NULL via la session supprimée
     s.flush()
     erased_user = False
     if user_id is not None:

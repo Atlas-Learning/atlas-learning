@@ -46,6 +46,9 @@ from src.db import active, make_engine
 from src.items import review
 from src.items import templates as item_templates
 from src.items import review_queue
+from src.api import checkin_service
+from src.models.base import CheckInKind
+from src.models.checkin import CheckIn
 from src.items.arabic import (
     ALLAM_MODEL,
     TranslationError,
@@ -88,6 +91,7 @@ from src.rbac.authz import (
     can_access_student,
     can_flag_item,
     can_grant_dept_lead,
+    can_run_checkin,
     can_manage_roles,
     can_manage_school,
     can_review_arabic,
@@ -1734,6 +1738,114 @@ def resolve_item_flag(flag_id: uuid.UUID, body: ItemFlagResolveIn,
                         "item_status": it.status.value if it else None})
     s.commit()
     return _flag_payload(fl, it)
+
+
+# ---------- check-ins de classe (refonte B1, écrans E2 et S1) ----------
+#
+# L'enseignant ouvre un check-in sur SA classe (code à 4 chiffres, unique parmi les ouverts),
+# les élèves rejoignent par le code (session liée), l'écran projeté suit une progression
+# ANONYME (invariant 5), la clôture termine les sessions ouvertes. Logique : checkin_service.py.
+
+class CheckInOpenIn(BaseModel):
+    kind: Literal["full", "targeted"] = "full"
+    competency_ids: Optional[List[uuid.UUID]] = None   # targeted : obligatoire ; full : optionnel
+    student_ids: Optional[List[uuid.UUID]] = None      # targeted : membres du groupe
+    action_id: Optional[uuid.UUID] = None              # targeted : action du plan (B2/B4)
+
+
+class CheckInJoinIn(BaseModel):
+    code: str
+    locale: Literal["en", "ar"] = "en"
+
+
+def _get_checkin(s: Session, checkin_id: uuid.UUID) -> CheckIn:
+    ci = s.get(CheckIn, checkin_id)
+    if ci is None:
+        raise HTTPException(status_code=404, detail="check-in introuvable")
+    _get_live_classroom(s, ci.classroom_id)      # classe ou école supprimée → 404
+    return ci
+
+
+@app.post("/classrooms/{classroom_id}/checkins")
+def open_checkin_ep(classroom_id: uuid.UUID, body: CheckInOpenIn,
+                    ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    cls = _get_live_classroom(s, classroom_id)
+    if not can_run_checkin(ctx, classroom_id):
+        raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
+    try:
+        ci = checkin_service.open_checkin(
+            s, classroom=cls, created_by=ctx.user_id, kind=CheckInKind(body.kind),
+            competency_ids=body.competency_ids, student_ids=body.student_ids,
+            plan_action_id=body.action_id)
+    except checkin_service.CheckInError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    s.commit()
+    return checkin_service.checkin_payload(ci, with_code=True)
+
+
+@app.get("/classrooms/{classroom_id}/checkins")
+def list_checkins_ep(classroom_id: uuid.UUID, limit: int = 20,
+                     ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    cls = _get_live_classroom(s, classroom_id)
+    if not can_access_classroom(ctx, classroom_id, cls.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette classe")
+    rows = s.execute(select(CheckIn).where(CheckIn.classroom_id == classroom_id)
+                     .order_by(CheckIn.opened_at.desc()).limit(min(max(limit, 1), 200))).scalars().all()
+    show_code = can_run_checkin(ctx, classroom_id)
+    return {"classroom_id": str(classroom_id),
+            "checkins": [checkin_service.checkin_payload(c, with_code=show_code) for c in rows]}
+
+
+@app.get("/checkins/{checkin_id}")
+def get_checkin_ep(checkin_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                   s: Session = Depends(get_db)):
+    ci = _get_checkin(s, checkin_id)
+    if not can_access_classroom(ctx, ci.classroom_id, ci.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à ce check-in")
+    return checkin_service.checkin_payload(ci, with_code=can_run_checkin(ctx, ci.classroom_id))
+
+
+@app.get("/checkins/{checkin_id}/progress")
+def checkin_progress_ep(checkin_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                        s: Session = Depends(get_db)):
+    """Progression ANONYME (écran projeté) : compteurs + tuiles {state, n_answered}. Jamais de
+    nom ni d'identifiant d'élève (invariant 5)."""
+    ci = _get_checkin(s, checkin_id)
+    if not can_access_classroom(ctx, ci.classroom_id, ci.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à ce check-in")
+    return checkin_service.progress(s, ci)
+
+
+@app.post("/checkins/{checkin_id}/close")
+def close_checkin_ep(checkin_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                     s: Session = Depends(get_db)):
+    ci = _get_checkin(s, checkin_id)
+    if not can_run_checkin(ctx, ci.classroom_id):
+        raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
+    result = checkin_service.close_checkin(s, ci, by=ctx.user_id)
+    s.commit()
+    # B2 (plan, kind=full) et B4 (preuve, kind=targeted) se brancheront ici.
+    return {**result, "progress": checkin_service.progress(s, ci)}
+
+
+@app.post("/checkins/join")
+def join_checkin_ep(body: CheckInJoinIn, ctx: UserContext = Depends(get_context),
+                    s: Session = Depends(get_db)):
+    """S1 · Rejoindre : compte élève déjà connecté (SSO) + code. Refus clair si le code est
+    inconnu ou clos, ou si l'élève n'est pas dans la classe (ou le groupe) du check-in."""
+    if Role.STUDENT not in ctx.roles or ctx.own_student_id is None:
+        raise HTTPException(status_code=403, detail="compte élève requis")
+    st = s.execute(active(Student).where(Student.id == ctx.own_student_id)).scalar_one_or_none()
+    if st is None:
+        raise HTTPException(status_code=403, detail="compte élève requis")
+    try:
+        sess = checkin_service.join_checkin(s, code=body.code, student=st, locale=body.locale)
+    except checkin_service.JoinRefused as e:
+        if e.reason == "code":
+            raise HTTPException(status_code=404, detail="code inconnu ou check-in clos")
+        raise HTTPException(status_code=403, detail="vous n'êtes pas dans la classe de ce check-in")
+    return {"session_id": str(sess.id), "checkin_id": str(sess.checkin_id), "status": sess.status,
+            "locale": sess.locale.value}
 
 
 # ---------- file de revue (refonte A4, écran O2) ----------

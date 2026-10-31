@@ -5,7 +5,7 @@ Ne pas trancher ces points dans le code. Les marquer `[À CLARIFIER]` et les rem
 | # | Question | Bloque | Proposition par défaut |
 | --- | --- | --- | --- |
 | Q1 | Définition exacte de « débloqué » | B4 | Avant : mesuré et non maîtrisé. Après re-mesure ciblée : Elo ≥ 1500 et confiance ≥ 0,5 |
-| Q2 | Nombre d'items par compétence pour une estimation exploitable en 10 min | B1, B2 | Lire `src/engine/stopping.py` et proposer une valeur |
+| Q2 | Nombre d'items par compétence pour une estimation exploitable en 10 min | B1, B2 | Lire `src/engine/stopping.py` et proposer une valeur. B1 livré avec les règles d'arrêt existantes (`StopConfig`) : un check-in `full` sans `competency_ids` couvre toute la banque active ; à resserrer sur l'unité pilote quand Q3 sera tranchée |
 | Q3 | Liste des compétences de l'unité pilote qui ont besoin d'une mini-leçon | B3 | Les racines produites par le plan de démo de la classe 4B |
 | Q4 | Qui rédige et relit les mini-leçons (EN et AR) | B3 | Nassim rédige l'EN, le linguiste valide l'AR |
 | Q5 | Jour et heure du message hebdomadaire, réglage par école ou par pays | B6 | Par école, défaut lundi 7 h heure locale (dimanche en Arabie saoudite) |

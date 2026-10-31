@@ -125,6 +125,18 @@ class ItemFlagStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+class CheckInKind(str, enum.Enum):
+    """Check-in de classe (refonte B1) : diagnostic complet ou re-mesure ciblée d'un groupe."""
+    FULL = "full"
+    TARGETED = "targeted"
+
+
+class CheckInStatus(str, enum.Enum):
+    SCHEDULED = "scheduled"
+    OPEN = "open"
+    CLOSED = "closed"
+
+
 class AnswerFormat(str, enum.Enum):
     MCQ = "MCQ"
     NUMERIC = "NUMERIC"

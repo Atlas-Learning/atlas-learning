@@ -447,6 +447,44 @@ def test_0024_role_content_reviewer_reversible():
         os.unlink(tmp.name)
 
 
+def test_0025_checkin_reversible():
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "head")
+        engine = sa.create_engine(url)
+        insp = sa.inspect(engine)
+        assert "checkin" in insp.get_table_names()
+        assert any(c["name"] == "checkin_id" for c in insp.get_columns("assessment_session"))
+        fks = {f["referred_table"]: f["options"] for f in insp.get_foreign_keys("checkin")}
+        assert fks["classroom"] == {"ondelete": "CASCADE"} and fks["app_user"] == {"ondelete": "SET NULL"}
+        assert any(f["referred_table"] == "checkin" and f["options"] == {"ondelete": "SET NULL"}
+                   for f in insp.get_foreign_keys("assessment_session"))
+        with engine.begin() as conn:
+            school, cls = _hex(uuid.uuid4()), _hex(uuid.uuid4())
+            conn.execute(sa.text("INSERT INTO school (id, name) VALUES (:id, 'S')"), {"id": school})
+            conn.execute(sa.text("INSERT INTO classroom (id, school_id, name) VALUES (:id, :s, '4B')"), {"id": cls, "s": school})
+            conn.execute(sa.text(
+                "INSERT INTO checkin (id, school_id, classroom_id, kind, code, status, opened_at) "
+                "VALUES (:id, :s, :c, 'full', '1234', 'open', '2026-01-01 08:00:00')"),
+                {"id": _hex(uuid.uuid4()), "s": school, "c": cls})
+        command.downgrade(cfg, "0024_role_content_reviewer")
+        insp = sa.inspect(engine)
+        assert "checkin" not in insp.get_table_names()
+        assert not any(c["name"] == "checkin_id" for c in insp.get_columns("assessment_session"))
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

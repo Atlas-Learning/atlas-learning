@@ -29,6 +29,10 @@ class AssessmentSession(Base):
         default=ResponseLanguage.EN, server_default="en",
     )
     target_competency_ids: Mapped[Optional[list]] = mapped_column(JSON, default=None)
+    # Refonte B1 : une session d'élève rejoint au plus un check-in de classe.
+    checkin_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("checkin.id", ondelete="SET NULL"), default=None, index=True
+    )
     stop_reason: Mapped[Optional[str]] = mapped_column(String, default=None)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)

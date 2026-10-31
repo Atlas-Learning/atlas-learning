@@ -24,6 +24,7 @@ from src.models import measurement as _measurement  # noqa: E402,F401  (school/s
 from src.models import session as _session  # noqa: E402,F401  (assessment_session)
 from src.models import org as _org  # noqa: E402,F401  (organization/classroom/user/membership)
 from src.models import audit as _audit  # noqa: E402,F401  (audit_log)
+from src.models import checkin as _checkin  # noqa: E402,F401  (checkin, refonte B1)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_database_url())

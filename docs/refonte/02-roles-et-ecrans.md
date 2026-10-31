@@ -58,7 +58,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **E2 · Check-in projeté** — `maquettes/Checkin.dc.html`
 - Route : `/teacher/[classroomId]/checkin/[checkinId]`
-- API : `POST /classrooms/{id}/checkins` `{kind: "full" | "targeted", action_id?}` → `{id, code}` ; `GET /checkins/{id}/progress` ; `POST /checkins/{id}/close`
+- API : `POST /classrooms/{id}/checkins` `{kind: "full" | "targeted", competency_ids?, student_ids?, action_id?}` → `{id, code, …}` ; `GET /classrooms/{id}/checkins` ; `GET /checkins/{id}` (code visible par l'enseignant seul) ; `GET /checkins/{id}/progress` ; `POST /checkins/{id}/close` — livrés (B1)
 - Acceptation :
   - code à 4 chiffres affiché en grand, unique parmi les check-ins ouverts ;
   - `progress` ne renvoie que des compteurs (rejoints, en cours, terminés, absents) et une tuile anonyme par élève (invariant 5) ;
@@ -103,7 +103,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **S1 · Rejoindre** — `maquettes/Student-join.dc.html`
 - Route : `/student/join`
-- API : `POST /checkins/join {code}` → `{session_id}` (crée une `AssessmentSession` liée au check-in)
+- API : `POST /checkins/join {code, locale?}` → `{session_id, checkin_id}` (crée une `AssessmentSession` liée au check-in ; idempotent : re-rejoindre renvoie la session ouverte) — livré (B1)
 - Acceptation : compte SSO déjà connecté, refus clair si code inconnu, clos, ou si l'élève n'est pas dans la classe.
 
 **S2 · Session** — `maquettes/Student-session.dc.html`

@@ -10,8 +10,8 @@ Statut produit : la machine PROPOSE (`content_ar`, `ar_validated=False`), le lin
 (`review.validate_arabic`) — le gate `ar_validated` reste la seule porte vers le pool servi.
 Un rendu qui ne passerait pas `ar_fidelity_errors` n'est jamais proposé (`None`).
 
-[À CLARIFIER] Les formulations arabes doivent être relues par un locuteur natif avant de servir
-de référence de copy (cf. docs/refonte/maquettes/README.md) ; la relecture se fait ici.
+Relecture par un locuteur natif : planifiée dans le bucket de la première passe bêta
+(docs/refonte/07-tests-beta.md) ; elle se fait ici, dans `_STEMS` et `_OPTIONS`.
 """
 from __future__ import annotations
 

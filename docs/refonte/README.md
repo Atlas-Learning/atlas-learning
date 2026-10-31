@@ -11,6 +11,7 @@ Ce dossier contient tout ce qu'il faut pour implémenter la refonte avec Claude 
 | `04-plan.md` | Le plan en 5 phases et ~25 tickets, avec fichiers à toucher et tests |
 | `05-questions-ouvertes.md` | Ce qui n'est pas tranché : à ne pas inventer |
 | `06-attribution-des-roles.md` | Comment `dept_lead` et `group_admin` sont attribués et se connectent, avec ou sans SSO |
+| `07-tests-beta.md` | Ce qui attend la première passe bêta : relecture arabe, vérification des écrans en navigateur |
 | `maquettes/` | Les 22 écrans de référence (`.dc.html`) |
 
 Documents de pilotage côté produit (non nécessaires pour coder) :

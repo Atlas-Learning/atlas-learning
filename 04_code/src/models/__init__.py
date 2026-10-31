@@ -12,3 +12,4 @@ from . import org  # noqa: F401
 from . import session  # noqa: F401
 from . import audit  # noqa: F401
 from . import token  # noqa: F401
+from . import checkin  # noqa: F401

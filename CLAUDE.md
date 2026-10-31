@@ -58,3 +58,4 @@ Avant de déclarer une tâche finie : `make test` vert, migration aller-retour O
 - Les maquettes de `docs/refonte/maquettes/` sont des références visuelles, pas du code à copier : reconstruis-les avec les composants existants de `web/components/`.
 - Une incertitude se marque `[À CLARIFIER]` dans le code ou la doc et se remonte dans le compte rendu. Ne l'invente pas.
 - Les questions déjà ouvertes sont listées dans `docs/refonte/05-questions-ouvertes.md`.
+- Ce qui attend une vérification humaine ou en navigateur va dans `docs/refonte/07-tests-beta.md`, pas dans le compte rendu : on finit le dev, puis on passe aux interfaces.

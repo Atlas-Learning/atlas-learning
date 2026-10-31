@@ -2,7 +2,7 @@
 
 État de départ : migrations jusqu'à `0022_role_content_reviewer`. Les numéros ci-dessous sont indicatifs ; garder une migration par sujet, chacune réversible.
 
-> **Numérotation réelle** (dépôt à 0020 au départ, voir `00-ecarts-depot.md`) : « 0023 » = `0021_role_dept_lead_group_admin` + `0022_classroom_grade_dept_scope` ; « 0024 » = `0023_item_versions_flags` ; le rôle `content_reviewer` = `0024_role_content_reviewer`. « 0025 » = `0025_checkin`, « 0026 » = `0026_weekly_plan`. Puis `0027_response_selected` (hors spec, Q16 : option choisie par l'élève), donc « 0027 » (mini_lesson) = `0028_mini_lesson` ; `0029_school_plan_mail` (B6, Q5, hors spec) ; donc « 0029 » (curriculums dynamiques, C1) = `0030_curriculum_framework_table` ; « 0028 » (department_decision, D1) et « 0030 » (items d'école, E1) suivront dans l'ordre des tickets.
+> **Numérotation réelle** (dépôt à 0020 au départ, voir `00-ecarts-depot.md`) : « 0023 » = `0021_role_dept_lead_group_admin` + `0022_classroom_grade_dept_scope` ; « 0024 » = `0023_item_versions_flags` ; le rôle `content_reviewer` = `0024_role_content_reviewer`. « 0025 » = `0025_checkin`, « 0026 » = `0026_weekly_plan`. Puis `0027_response_selected` (hors spec, Q16 : option choisie par l'élève), donc « 0027 » (mini_lesson) = `0028_mini_lesson` ; `0029_school_plan_mail` (B6, Q5, hors spec) ; donc « 0029 » (curriculums dynamiques, C1) = `0030_curriculum_framework_table`, suivi de `0031_curriculum_std_reviewed` (C2, hors spec : `curriculum_standard.reviewed_at`) ; « 0028 » (department_decision, D1) et « 0030 » (items d'école, E1) suivront dans l'ordre des tickets.
 
 Noms de champs en anglais, types SQLAlchemy 2 (`Mapped[...]`), UUID en clé primaire comme le reste du schéma, `school_id` dénormalisé sur toute table élève pour l'isolation tenant et la rétention.
 
@@ -99,6 +99,8 @@ Migration :
 `competency_curriculum_map` garde ses champs (`alignment_type`, `confidence`, `enrich_kind`, `note`, `weight_source`, `weight_version`) ; ajouter `reviewed_by`, `reviewed_at`, `suggested` (bool : proposé automatiquement, non encore validé).
 
 Import : CSV ou JSON avec `code, label_en, label_ar, grade_hint`. Le mapping suggéré peut réutiliser la logique de `scripts/` du crosswalk ; une ligne `suggested=true` n'est jamais affichée aux écoles.
+
+**Livré (C2, `0031_curriculum_std_reviewed`)** : `curriculum_standard.reviewed_at` nullable — un attendu est « revu » soit quand toutes ses lignes de mapping sont validées (≥ 1), soit quand le relecteur l'a marqué sans correspondance (`reviewed_at` posé, lignes suggérées purgées). La publication exige que tous les attendus soient revus. La suggestion (`curricula_service.suggest_mappings`) est déterministe : recouvrement lexical des libellés anglais (petit lexique de synonymes du domaine fractions) + niveau annoncé par `grade_hint` vs `Competency.grade` (Year N ≈ Grade N−1, Q6) ; seuil 2.0, au plus 2 propositions par attendu, en `PARTIAL` / confiance `M`. Le réimport ne perd rien : lignes revues conservées, `label_ar` et `grade_hint` existants gardés si la colonne manque.
 
 ## 0030 — Items d'école (phase E)
 

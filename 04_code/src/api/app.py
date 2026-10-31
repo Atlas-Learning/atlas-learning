@@ -50,6 +50,7 @@ from src.items import review_queue
 from src.api import checkin_service
 from src.api import plan_service
 from src.api import proof_service
+from src.api import curricula_service
 from src.notify import weekly_plan as weekly_plan_mail
 from zoneinfo import ZoneInfo
 from src.api import lesson_service
@@ -497,9 +498,14 @@ def admin_curriculum(organization_id: Optional[uuid.UUID] = None,
                           .where(CurriculumFrameworkDef.status == FrameworkStatus.PUBLISHED)
                           .order_by(CurriculumFrameworkDef.imported_at, CurriculumFrameworkDef.key)).scalars().all()
     current = s.get(CurriculumFrameworkDef, org.curriculum_framework_id) if org.curriculum_framework_id else None
+    # refonte C2 : `curriculum_view` = ce que les écoles VOIENT (un framework dépublié retombe en
+    # ATLAS) ; `configured_view` = le choix enregistré, pour que l'admin comprenne l'écart.
+    effective = current if (current is not None and current.status == FrameworkStatus.PUBLISHED) else None
     return {
         "organization": {"id": str(org.id), "name": org.name},
-        "curriculum_view": current.key if current else "ATLAS",
+        "curriculum_view": effective.key if effective else "ATLAS",
+        "configured_view": current.key if current else "ATLAS",
+        "configured_status": current.status.value if current else None,
         "available_frameworks": ["ATLAS"] + [fw.key for fw in published],
         # refonte C1 : les frameworks viennent de la table (noms pour l'UI) ; ATLAS = vue neutre
         "frameworks": [{"key": "ATLAS", "name_en": "Atlas (neutral)", "name_ar": "أطلس (محايد)"}]
@@ -2150,6 +2156,185 @@ def ops_lesson_update(lesson_id: uuid.UUID, body: dict, ctx: UserContext = Depen
                resource_id=lesson.id, details={"key": lesson.key})
     s.commit()
     return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
+
+
+# ---------- curriculums dynamiques (refonte C2, écran O3) : super admin ----------
+
+def _require_super(ctx: UserContext) -> None:
+    if not is_super(ctx):
+        raise HTTPException(status_code=403, detail="réservé au super admin Atlas")
+
+
+def _get_framework(s: Session, framework_id: uuid.UUID) -> CurriculumFrameworkDef:
+    fw = s.get(CurriculumFrameworkDef, framework_id)
+    if fw is None:
+        raise HTTPException(status_code=404, detail="framework introuvable")
+    return fw
+
+
+class CurriculumImportIn(BaseModel):
+    key: str
+    name_en: str
+    name_ar: Optional[str] = None
+    country: Optional[str] = None
+    source_note: Optional[str] = None
+    standards: Optional[List[dict]] = None      # [{code, label_en, label_ar?, grade_hint?}]
+    csv: Optional[str] = None                   # ou le CSV brut (en-tête code,label_en[,label_ar][,grade_hint])
+    suggest: bool = True
+
+
+@app.get("/ops/curricula")
+def ops_curricula_list(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    _require_super(ctx)
+    rows = s.execute(select(CurriculumFrameworkDef).order_by(CurriculumFrameworkDef.imported_at)).scalars().all()
+    return {"frameworks": [curricula_service.framework_payload(s, fw) for fw in rows]}
+
+
+@app.post("/ops/curricula")
+def ops_curricula_import(body: CurriculumImportIn, ctx: UserContext = Depends(get_context),
+                         s: Session = Depends(get_db)):
+    _require_super(ctx)
+    try:
+        standards = body.standards or (curricula_service.parse_standards_csv(body.csv) if body.csv else [])
+        fw, rep = curricula_service.import_framework(
+            s, key=body.key, name_en=body.name_en, name_ar=body.name_ar, country=body.country,
+            source_note=body.source_note, standards=standards, by=ctx.user_id, suggest=body.suggest)
+    except curricula_service.CurriculaError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    s.commit()
+    return {**curricula_service.framework_payload(s, fw), "import": rep}
+
+
+@app.get("/ops/curricula/{framework_id}")
+def ops_curricula_detail(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                         s: Session = Depends(get_db)):
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    return {**curricula_service.framework_payload(s, fw), "coverage": curricula_service.coverage(s, fw)}
+
+
+@app.get("/ops/curricula/{framework_id}/mappings")
+def ops_curricula_mappings(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                           s: Session = Depends(get_db)):
+    _require_super(ctx)
+    return curricula_service.coverage(s, _get_framework(s, framework_id))
+
+
+@app.get("/ops/curricula/{framework_id}/coverage")
+def ops_curricula_coverage(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                           s: Session = Depends(get_db)):
+    _require_super(ctx)
+    cov = curricula_service.coverage(s, _get_framework(s, framework_id))
+    return {k: v for k, v in cov.items() if k != "standards"}
+
+
+class MappingIn(BaseModel):
+    standard_id: uuid.UUID
+    competency_id: uuid.UUID
+    alignment_type: str
+    confidence: str
+    enrich_kind: Optional[str] = None
+    note: Optional[str] = None
+
+
+class MappingDeleteIn(BaseModel):
+    standard_id: uuid.UUID
+    competency_id: uuid.UUID
+
+
+class NoMatchIn(BaseModel):
+    standard_id: uuid.UUID
+    no_match: bool = True
+
+
+@app.put("/ops/curricula/{framework_id}/mappings")
+def ops_curricula_set_mapping(framework_id: uuid.UUID, body: MappingIn, ctx: UserContext = Depends(get_context),
+                              s: Session = Depends(get_db)):
+    """Crée ou valide une ligne (elle sort de `suggested`)."""
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    try:
+        curricula_service.set_mapping(s, fw, standard_id=body.standard_id, competency_id=body.competency_id,
+                                      alignment_type=body.alignment_type, confidence=body.confidence,
+                                      enrich_kind=body.enrich_kind, note=body.note, by=ctx.user_id)
+    except curricula_service.CurriculaError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    s.commit()
+    return curricula_service.coverage(s, fw)
+
+
+@app.delete("/ops/curricula/{framework_id}/mappings")
+def ops_curricula_delete_mapping(framework_id: uuid.UUID, body: MappingDeleteIn,
+                                 ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    try:
+        curricula_service.delete_mapping(s, fw, standard_id=body.standard_id, competency_id=body.competency_id, by=ctx.user_id)
+    except curricula_service.CurriculaError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    s.commit()
+    return curricula_service.coverage(s, fw)
+
+
+@app.post("/ops/curricula/{framework_id}/no-match")
+def ops_curricula_no_match(framework_id: uuid.UUID, body: NoMatchIn, ctx: UserContext = Depends(get_context),
+                           s: Session = Depends(get_db)):
+    """Attendu revu sans correspondance dans le graphe (ou réouvert)."""
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    try:
+        curricula_service.mark_standard_no_match(s, fw, standard_id=body.standard_id, by=ctx.user_id, no_match=body.no_match)
+    except curricula_service.CurriculaError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    s.commit()
+    return curricula_service.coverage(s, fw)
+
+
+@app.post("/ops/curricula/{framework_id}/suggest")
+def ops_curricula_suggest(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                          s: Session = Depends(get_db)):
+    """Relance la suggestion déterministe pour les attendus encore sans ligne."""
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    n = curricula_service.suggest_mappings(s, fw)
+    s.commit()
+    return {"suggested": n, **{k: v for k, v in curricula_service.coverage(s, fw).items() if k != "standards"}}
+
+
+@app.post("/ops/curricula/{framework_id}/publish")
+def ops_curricula_publish(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                          s: Session = Depends(get_db)):
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    try:
+        curricula_service.publish(s, fw, by=ctx.user_id)
+    except curricula_service.CurriculaError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    s.commit()
+    return curricula_service.framework_payload(s, fw)
+
+
+@app.post("/ops/curricula/{framework_id}/unpublish")
+def ops_curricula_unpublish(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                            s: Session = Depends(get_db)):
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    curricula_service.unpublish(s, fw, by=ctx.user_id)
+    s.commit()
+    return curricula_service.framework_payload(s, fw)
+
+
+@app.delete("/ops/curricula/{framework_id}")
+def ops_curricula_delete(framework_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                         s: Session = Depends(get_db)):
+    _require_super(ctx)
+    fw = _get_framework(s, framework_id)
+    try:
+        curricula_service.delete_framework(s, fw, by=ctx.user_id)
+    except curricula_service.CurriculaError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    s.commit()
+    return {"deleted": str(framework_id)}
 
 
 # ---------- file de revue (refonte A4, écran O2) ----------

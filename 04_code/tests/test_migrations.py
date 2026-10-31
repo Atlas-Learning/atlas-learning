@@ -633,6 +633,30 @@ def test_0030_frameworks_table_migrates_data_and_downgrade_is_guarded():
         os.unlink(tmp.name)
 
 
+def test_0031_curriculum_standard_reviewed_reversible():
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "head")
+        engine = sa.create_engine(url)
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("curriculum_standard")}
+        assert "reviewed_at" in cols
+        command.downgrade(cfg, "0030_curriculum_framework_table")
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("curriculum_standard")}
+        assert "reviewed_at" not in cols
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

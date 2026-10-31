@@ -84,7 +84,7 @@ Format : **Objectif** · **Fichiers** · **Fait quand** · **Tests**.
 **C2 · Import, mapping, couverture, publication**
 - Objectif : API `/ops/curricula/*` (voir écran O3).
 - Fait quand : importer un CSV d'attendus, mapper, voir la couverture, publier ; une école voit le framework publié dans son choix.
-- Tests : une ligne `suggested` n'est jamais servie aux écoles ; publication refusée si des attendus restent non revus.
+- Tests : une ligne `suggested` n'est jamais servie aux écoles ; publication refusée si des attendus restent non revus. **Livré** : `src/api/curricula_service.py` + endpoints `/ops/curricula/*` (super admin), migration `0031_curriculum_std_reviewed` (`curriculum_standard.reviewed_at` = attendu revu « sans correspondance »), suggestion déterministe (lexique + niveau, pas de LLM), réimport sans perte (lignes revues et arabe saisi conservés), `tests/test_curricula.py`. `GET /admin/curriculum` distingue désormais `curriculum_view` (servi) et `configured_view` (choisi, même brouillon).
 
 **C3 · Écran O3 et libellés par alignement**
 - Objectif : UI `/ops/curricula/[id]` et libellés côté école selon `alignment_type` (voir `01`).

@@ -520,7 +520,9 @@ export interface CurriculumCoverage {
 
 export interface CurriculumSettings {
   organization: { id: string; name: string };
-  curriculum_view: string;
+  curriculum_view: string;            // ce que les écoles voient (un framework dépublié → "ATLAS")
+  configured_view?: string;           // refonte C2 : le choix enregistré, même non publié
+  configured_status?: string | null;  // draft | published
   available_frameworks: string[];
   // Refonte C1 : les frameworks viennent de la table (noms EN/AR) ; ATLAS = vue neutre.
   frameworks?: { key: string; name_en: string; name_ar: string; country?: string | null }[];

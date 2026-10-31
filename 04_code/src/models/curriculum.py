@@ -97,6 +97,9 @@ class CurriculumStandard(Base):
     label_en: Mapped[str] = mapped_column(String)
     label_ar: Mapped[str] = mapped_column(String)
     grade_hint: Mapped[Optional[str]] = mapped_column(String, default=None)  # affichage ('G4', 'Y5', 'G4-G5')
+    # Refonte C2 : un attendu est « revu » quand toutes ses lignes de mapping le sont, OU quand
+    # le relecteur l'a explicitement marqué sans correspondance (reviewed_at posé, zéro ligne).
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
 
     @property
     def framework_key(self) -> str:

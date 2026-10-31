@@ -161,6 +161,18 @@ export interface UnlockHistory {
   unlocks: { competency_code: string | null; label_en: string | null; label_ar: string | null; before_elo: number; after_elo: number | null; unlocked_at: string | null }[];
 }
 
+// Réglages du message hebdomadaire par école (B6, écran I1).
+export interface SchoolMailSettings {
+  id: string;
+  name: string;
+  organization_id: string | null;
+  country: string | null;
+  plan_mail_weekday: number | null;
+  plan_mail_hour: number | null;
+  timezone: string | null;
+  effective: { weekday: number; hour: number; timezone: string };
+}
+
 // File de revue de la banque (refonte A4, écran O2) — /ops/review.
 export type ReviewSource = "flag" | "validation" | "school" | "arabic";
 export type ReviewAction =

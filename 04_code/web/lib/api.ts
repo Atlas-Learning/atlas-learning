@@ -29,6 +29,7 @@ import type {
   ReviewQueue,
   ReviewSource,
   RoleGrant,
+  SchoolMailSettings,
   SchoolOverview,
   TutorExplanation,
   StudentProfile,
@@ -330,6 +331,11 @@ export const api = {
   opsLessonUpdate: (lessonId: string, body: Record<string, unknown>) =>
     request<Lesson>(`/ops/lessons/${lessonId}`, { method: "PUT", body: JSON.stringify(body) }),
   lessonActivate: (lessonId: string) => request<Lesson>(`/lessons/${lessonId}/activate`, { method: "POST" }),
+
+  // — Réglages d'école : message hebdomadaire (B6 / I1) —
+  adminSchools: () => request<{ schools: SchoolMailSettings[] }>("/admin/schools"),
+  schoolSettingsPatch: (schoolId: string, body: { country?: string | null; plan_mail_weekday?: number | null; plan_mail_hour?: number | null; timezone?: string | null }) =>
+    request<SchoolMailSettings & { school_id: string }>(`/schools/${schoolId}/settings`, { method: "PATCH", body: JSON.stringify(body) }),
 
   // — Session élève —
   startSession: (student_id: string) =>

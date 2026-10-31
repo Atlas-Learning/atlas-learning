@@ -111,6 +111,14 @@ def can_grant_dept_lead(ctx: UserContext, school_id, school_organization_id) -> 
     return Role.PED_ADMIN in ctx.roles and school_id in ctx.school_ids
 
 
+def can_manage_school_settings(ctx: UserContext, school_id, school_organization_id) -> bool:
+    """Réglages d'une école (message hebdomadaire, B6/I1) : admins de l'école, ou admin IT de
+    SON organisation (membership it_admin sans école, cas de l'onboarding)."""
+    if can_manage_school(ctx, school_id):
+        return True
+    return Role.IT_ADMIN in ctx.roles and school_organization_id in ctx.admin_org_ids
+
+
 def can_access_school(ctx: UserContext, school_id) -> bool:
     """Lecture des agrégats d'une école (overview, preuves niveau école)."""
     if can_manage_school(ctx, school_id):

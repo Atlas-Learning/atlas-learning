@@ -104,6 +104,7 @@ from src.rbac.authz import (
     can_run_checkin,
     can_manage_roles,
     can_manage_school,
+    can_manage_school_settings,
     can_review_arabic,
     can_review_items,
     is_super,
@@ -2298,7 +2299,7 @@ class SchoolSettingsIn(BaseModel):
 @app.get("/schools/{school_id}/settings")
 def school_settings_ep(school_id: uuid.UUID, ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
     sch = _get_live_school(s, school_id)
-    if not can_access_school(ctx, school_id):
+    if not (can_access_school(ctx, school_id) or can_manage_school_settings(ctx, school_id, sch.organization_id)):
         raise HTTPException(status_code=403, detail="accès refusé à cet établissement")
     return weekly_plan_mail.settings_payload(sch)
 
@@ -2307,7 +2308,7 @@ def school_settings_ep(school_id: uuid.UUID, ctx: UserContext = Depends(get_cont
 def school_settings_patch_ep(school_id: uuid.UUID, body: SchoolSettingsIn,
                              ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
     sch = _get_live_school(s, school_id)
-    if not can_manage_school(ctx, school_id):
+    if not can_manage_school_settings(ctx, school_id, sch.organization_id):
         raise HTTPException(status_code=403, detail="réservé aux admins de l'établissement")
     data = body.model_dump(exclude_unset=True)
     if "country" in data and data["country"] is not None:
@@ -2330,6 +2331,29 @@ def school_settings_patch_ep(school_id: uuid.UUID, body: SchoolSettingsIn,
                resource_id=sch.id, details=data)
     s.commit()
     return weekly_plan_mail.settings_payload(sch)
+
+
+@app.get("/admin/schools")
+def admin_schools_ep(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """I1 · Écoles que l'appelant administre (admin IT : toute son organisation ; ped/it admin
+    d'école : la sienne), avec les réglages du message hebdomadaire (B6)."""
+    if not ctx.has(Role.IT_ADMIN, Role.PED_ADMIN, Role.SUPER_ADMIN):
+        raise HTTPException(status_code=403, detail="rôle admin requis")
+    q = select(School).where(School.deleted_at.is_(None))
+    if not is_super(ctx):
+        conds = []
+        if ctx.admin_org_ids:
+            conds.append(School.organization_id.in_(list(ctx.admin_org_ids)))
+        if ctx.school_ids:
+            conds.append(School.id.in_(list(ctx.school_ids)))
+        if not conds:
+            return {"schools": []}
+        from sqlalchemy import or_ as _or
+        q = q.where(_or(*conds))
+    schools = s.execute(q.order_by(School.name)).scalars().all()
+    return {"schools": [{"id": str(sc.id), "name": sc.name, "organization_id": str(sc.organization_id) if sc.organization_id else None,
+                         **{k: v for k, v in weekly_plan_mail.settings_payload(sc).items() if k != "school_id"}}
+                        for sc in schools]}
 
 
 @app.post("/admin/notify/weekly-plan")

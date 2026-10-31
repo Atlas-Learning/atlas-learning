@@ -142,3 +142,28 @@ def test_settings_api_and_admin_trigger():
         assert real["sent"] == 1 and len(fake.sent) == 1 and fake.sent[0]["to"] == "t@x.io"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_org_level_it_admin_lists_and_edits_school_settings():
+    client, ids, s = _setup()
+    try:
+        from src.models.org import Organization
+        it = AppUser(email="it@x.io"); other_it = AppUser(email="it2@x.io"); s.add_all([it, other_it]); s.flush()
+        other_org = Organization(name="Other"); s.add(other_org); s.flush()
+        s.add_all([Membership(user_id=it.id, role=Role.IT_ADMIN, organization_id=ids["org"]),       # org seule, sans école
+                   Membership(user_id=other_it.id, role=Role.IT_ADMIN, organization_id=other_org.id)])
+        s.commit()
+        lst = client.get("/admin/schools", headers=_auth(it.id)).json()
+        assert [x["id"] for x in lst["schools"]] == [str(ids["school"])] and lst["schools"][0]["effective"]["hour"] == 7
+        assert client.get("/admin/schools", headers=_auth(other_it.id)).json()["schools"] == []
+        assert client.get("/admin/schools", headers=_auth(ids["teacher"])).status_code == 403
+        url = f"/schools/{ids['school']}/settings"
+        assert client.get(url, headers=_auth(it.id)).status_code == 200
+        r = client.patch(url, json={"country": "AE", "plan_mail_hour": 6}, headers=_auth(it.id))
+        assert r.status_code == 200 and r.json()["effective"] == {"weekday": 0, "hour": 6, "timezone": "Asia/Dubai"}
+        assert client.patch(url, json={"plan_mail_hour": 9}, headers=_auth(other_it.id)).status_code == 403
+        # effacer un réglage : retour au défaut du pays
+        r = client.patch(url, json={"plan_mail_hour": None}, headers=_auth(it.id)).json()
+        assert r["plan_mail_hour"] is None and r["effective"]["hour"] == 7
+    finally:
+        app.dependency_overrides.clear()

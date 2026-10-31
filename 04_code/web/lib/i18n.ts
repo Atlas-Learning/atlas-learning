@@ -278,6 +278,26 @@ export const DICT = {
   "lessons.cancel": { en: "Cancel", ar: "إلغاء" },
   "lessons.all": { en: "All lessons", ar: "كل الدروس" },
 
+  // — I1 · message hebdomadaire par école (B6) —
+  "mail.title": { en: "Weekly plan message", ar: "رسالة الخطة الأسبوعية" },
+  "mail.subtitle": { en: "When teachers receive “your plan is ready”, per school. Leave empty to use the country default (Sunday in Saudi Arabia, Monday elsewhere, 7:00).", ar: "موعد وصول رسالة «خطتك جاهزة» إلى المعلّمين، لكل مدرسة. اتركه فارغًا لاستخدام الافتراضي حسب البلد (الأحد في السعودية، الاثنين في غيرها، 7:00)." },
+  "mail.country": { en: "Country (ISO)", ar: "البلد (ISO)" },
+  "mail.weekday": { en: "Day", ar: "اليوم" },
+  "mail.hour": { en: "Hour (local)", ar: "الساعة (محلي)" },
+  "mail.timezone": { en: "Time zone", ar: "المنطقة الزمنية" },
+  "mail.default": { en: "default", ar: "الافتراضي" },
+  "mail.effective": { en: "Effective", ar: "الفعلي" },
+  "mail.save": { en: "Save", ar: "حفظ" },
+  "mail.saved": { en: "Saved", ar: "تم الحفظ" },
+  "mail.error": { en: "Could not save these settings.", ar: "تعذّر حفظ هذه الإعدادات." },
+  "mail.day.0": { en: "Monday", ar: "الاثنين" },
+  "mail.day.1": { en: "Tuesday", ar: "الثلاثاء" },
+  "mail.day.2": { en: "Wednesday", ar: "الأربعاء" },
+  "mail.day.3": { en: "Thursday", ar: "الخميس" },
+  "mail.day.4": { en: "Friday", ar: "الجمعة" },
+  "mail.day.5": { en: "Saturday", ar: "السبت" },
+  "mail.day.6": { en: "Sunday", ar: "الأحد" },
+
   // — Curriculum : choix réservé à Atlas (Q14) —
   "curriculum.readonly": {
     en: "The displayed framework is set by Atlas for your school. Contact your Atlas account manager to change it.",

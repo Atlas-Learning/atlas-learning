@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { AppShell, useMe } from "@/components/AppShell";
 import { useLang } from "@/components/LanguageProvider";
-import { Button, Card, Chip, Loading, SectionTitle } from "@/components/ui";
+import { Button, Card, Chip, Loading, SectionTitle, cx } from "@/components/ui";
 import { EthicsStance } from "@/components/EthicsStance";
 import { api, type AuditEntry, type Integration, type RosterRun, type SetupState } from "@/lib/api";
-import type { CurriculumSettings } from "@/lib/types";
+import type { CurriculumSettings, SchoolMailSettings } from "@/lib/types";
 import type { DictKey } from "@/lib/i18n";
 
 const STEP_LABEL: Record<string, DictKey> = {
@@ -274,6 +274,9 @@ function ITView() {
         </Card>
       )}
 
+      {/* B6 / I1 : message hebdomadaire « votre plan est prêt », réglé par école. */}
+      <WeeklyMailSettings />
+
       {/* Historique des synchronisations */}
       <Card className="p-5">
         <SectionTitle title={t("it.runs")} />
@@ -349,5 +352,86 @@ function Info({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-sand-400">{label}</dt>
       <dd className="mt-0.5 font-medium text-sand-800" data-ltr>{value}</dd>
     </div>
+  );
+}
+
+
+function WeeklyMailSettings() {
+  const { t } = useLang();
+  const [schools, setSchools] = useState<SchoolMailSettings[] | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, Partial<SchoolMailSettings>>>({});
+  const [state, setState] = useState<Record<string, "saving" | "saved" | "error" | undefined>>({});
+
+  useEffect(() => {
+    api.adminSchools().then((r) => setSchools(r.schools)).catch(() => setSchools([]));
+  }, []);
+
+  if (!schools || schools.length === 0) return null;
+
+  const get = (s: SchoolMailSettings, k: "country" | "plan_mail_weekday" | "plan_mail_hour" | "timezone") =>
+    k in (drafts[s.id] ?? {}) ? (drafts[s.id] as Record<string, unknown>)[k] : s[k];
+  const set = (id: string, k: string, v: unknown) => setDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? {}), [k]: v } }));
+
+  async function save(s: SchoolMailSettings) {
+    const d = drafts[s.id];
+    if (!d) return;
+    setState((x) => ({ ...x, [s.id]: "saving" }));
+    try {
+      const r = await api.schoolSettingsPatch(s.id, d as Record<string, never>);
+      setSchools((all) => (all ?? []).map((x) => (x.id === s.id ? { ...x, ...r, id: s.id, name: s.name } : x)));
+      setDrafts((x) => { const n = { ...x }; delete n[s.id]; return n; });
+      setState((x) => ({ ...x, [s.id]: "saved" }));
+    } catch {
+      setState((x) => ({ ...x, [s.id]: "error" }));
+    }
+  }
+
+  const SELECT = "mt-1 w-full rounded-lg border border-sand-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-400";
+  return (
+    <Card className="p-5">
+      <SectionTitle title={t("mail.title")} />
+      <p className="mb-3 text-xs text-sand-500">{t("mail.subtitle")}</p>
+      <ul className="space-y-4">
+        {schools.map((s) => (
+          <li key={s.id} className="rounded-xl border border-sand-200 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-sand-800">{s.name}</p>
+              <p className="num text-xs text-sand-500">
+                {t("mail.effective")}: {t(`mail.day.${s.effective.weekday}` as DictKey)} · {String(s.effective.hour).padStart(2, "0")}:00 · {s.effective.timezone}
+              </p>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+              <label className="text-xs text-sand-500">{t("mail.country")}
+                <input value={(get(s, "country") as string | null) ?? ""} maxLength={2} placeholder="AE"
+                  onChange={(e) => set(s.id, "country", e.target.value.toUpperCase() || null)} className={cx(SELECT, "num uppercase")} data-ltr />
+              </label>
+              <label className="text-xs text-sand-500">{t("mail.weekday")}
+                <select value={(get(s, "plan_mail_weekday") as number | null) ?? ""} className={SELECT}
+                  onChange={(e) => set(s.id, "plan_mail_weekday", e.target.value === "" ? null : Number(e.target.value))}>
+                  <option value="">{t("mail.default")}</option>
+                  {[0, 1, 2, 3, 4, 5, 6].map((d) => <option key={d} value={d}>{t(`mail.day.${d}` as DictKey)}</option>)}
+                </select>
+              </label>
+              <label className="text-xs text-sand-500">{t("mail.hour")}
+                <select value={(get(s, "plan_mail_hour") as number | null) ?? ""} className={cx(SELECT, "num")}
+                  onChange={(e) => set(s.id, "plan_mail_hour", e.target.value === "" ? null : Number(e.target.value))}>
+                  <option value="">{t("mail.default")}</option>
+                  {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+                </select>
+              </label>
+              <label className="text-xs text-sand-500">{t("mail.timezone")}
+                <input value={(get(s, "timezone") as string | null) ?? ""} placeholder={s.effective.timezone}
+                  onChange={(e) => set(s.id, "timezone", e.target.value || null)} className={SELECT} data-ltr />
+              </label>
+            </div>
+            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+              {state[s.id] === "saved" && <span className="text-teal-700">{t("mail.saved")}</span>}
+              {state[s.id] === "error" && <span className="text-danger">{t("mail.error")}</span>}
+              <Button variant="outline" disabled={!drafts[s.id] || state[s.id] === "saving"} onClick={() => save(s)}>{t("mail.save")}</Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }

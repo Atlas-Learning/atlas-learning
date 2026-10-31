@@ -485,6 +485,36 @@ def test_0025_checkin_reversible():
         os.unlink(tmp.name)
 
 
+def test_0026_weekly_plan_reversible_and_checkin_fk():
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "head")
+        engine = sa.create_engine(url)
+        insp = sa.inspect(engine)
+        assert {"weekly_plan", "plan_action", "plan_action_member", "proof"} <= set(insp.get_table_names())
+        assert any(f["referred_table"] == "plan_action" and f["options"] == {"ondelete": "SET NULL"}
+                   for f in insp.get_foreign_keys("checkin"))
+        fks = {f["referred_table"]: f["options"] for f in insp.get_foreign_keys("plan_action_member")}
+        assert fks["student"] == {"ondelete": "CASCADE"} and fks["plan_action"] == {"ondelete": "CASCADE"}
+        assert insp.get_pk_constraint("plan_action_member")["constrained_columns"] == ["action_id", "student_id"]
+        command.downgrade(cfg, "0025_checkin")
+        insp = sa.inspect(engine)
+        assert not ({"weekly_plan", "plan_action", "plan_action_member", "proof"} & set(insp.get_table_names()))
+        assert not any(f["referred_table"] == "plan_action" for f in insp.get_foreign_keys("checkin"))
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

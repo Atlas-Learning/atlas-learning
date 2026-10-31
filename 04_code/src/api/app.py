@@ -47,6 +47,9 @@ from src.items import review
 from src.items import templates as item_templates
 from src.items import review_queue
 from src.api import checkin_service
+from src.api import plan_service
+from src.models.plan import PlanAction, WeeklyPlan
+from datetime import date
 from src.models.base import CheckInKind
 from src.models.checkin import CheckIn
 from src.items.arabic import (
@@ -1823,9 +1826,12 @@ def close_checkin_ep(checkin_id: uuid.UUID, ctx: UserContext = Depends(get_conte
     if not can_run_checkin(ctx, ci.classroom_id):
         raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
     result = checkin_service.close_checkin(s, ci, by=ctx.user_id)
+    plan_id = None
+    if not result["already_closed"] and ci.kind == CheckInKind.FULL:
+        plan_id = str(plan_service.generate_plan_for_checkin(s, ci, by=ctx.user_id).id)   # B2
+    # B4 (preuve, kind=targeted) se branchera ici.
     s.commit()
-    # B2 (plan, kind=full) et B4 (preuve, kind=targeted) se brancheront ici.
-    return {**result, "progress": checkin_service.progress(s, ci)}
+    return {**result, "plan_id": plan_id, "progress": checkin_service.progress(s, ci)}
 
 
 @app.post("/checkins/join")
@@ -1846,6 +1852,73 @@ def join_checkin_ep(body: CheckInJoinIn, ctx: UserContext = Depends(get_context)
         raise HTTPException(status_code=403, detail="vous n'êtes pas dans la classe de ce check-in")
     return {"session_id": str(sess.id), "checkin_id": str(sess.checkin_id), "status": sess.status,
             "locale": sess.locale.value}
+
+
+# ---------- plan de la semaine (refonte B2, écrans E1 et E3) ----------
+
+def _get_action(s: Session, action_id: uuid.UUID) -> "tuple[PlanAction, WeeklyPlan]":
+    a = s.get(PlanAction, action_id)
+    if a is None:
+        raise HTTPException(status_code=404, detail="action introuvable")
+    plan = s.get(WeeklyPlan, a.plan_id)
+    _get_live_classroom(s, plan.classroom_id)
+    return a, plan
+
+
+@app.get("/classrooms/{classroom_id}/plan")
+def classroom_plan_ep(classroom_id: uuid.UUID, week: Optional[date] = None,
+                      ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """E1 · Le plan actif de la classe (semaine donnée, sinon le plus récent). 404 explicite si
+    aucun plan : l'écran propose alors le premier check-in."""
+    cls = _get_live_classroom(s, classroom_id)
+    if not can_access_classroom(ctx, classroom_id, cls.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette classe")
+    plan = plan_service.active_plan(s, classroom_id, week)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="aucun plan pour cette classe")
+    return plan_service.plan_payload(s, plan)
+
+
+@app.get("/plan-actions/{action_id}")
+def plan_action_ep(action_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                   s: Session = Depends(get_db)):
+    a, plan = _get_action(s, action_id)
+    if not can_access_classroom(ctx, plan.classroom_id, plan.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette action")
+    return plan_service.action_payload(s, a)
+
+
+class MembersPatchIn(BaseModel):
+    add: List[uuid.UUID] = []
+    remove: List[uuid.UUID] = []
+
+
+@app.patch("/plan-actions/{action_id}/members")
+def plan_action_members_ep(action_id: uuid.UUID, body: MembersPatchIn,
+                           ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """E3 · L'enseignant ajoute ou retire un élève du groupe ; la correction est enregistrée."""
+    a, plan = _get_action(s, action_id)
+    if not can_run_checkin(ctx, plan.classroom_id):
+        raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
+    class_ids = {st.id for st in plan_service._class_students(s, plan.classroom_id)}
+    try:
+        plan_service.set_members(s, a, add=body.add, remove=body.remove, class_student_ids=class_ids,
+                                 by=ctx.user_id)
+    except plan_service.PlanError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    s.commit()
+    return plan_service.action_payload(s, a)
+
+
+@app.post("/plan-actions/{action_id}/dismiss")
+def plan_action_dismiss_ep(action_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                           s: Session = Depends(get_db)):
+    a, plan = _get_action(s, action_id)
+    if not can_run_checkin(ctx, plan.classroom_id):
+        raise HTTPException(status_code=403, detail="réservé à l'enseignant de cette classe")
+    plan_service.dismiss(s, a, by=ctx.user_id)
+    s.commit()
+    return plan_service.action_payload(s, a)
 
 
 # ---------- file de revue (refonte A4, écran O2) ----------

@@ -35,9 +35,11 @@ class CheckIn(Base):
         ForeignKey("app_user.id", ondelete="SET NULL"), default=None
     )
     kind: Mapped[CheckInKind] = mapped_column(native_enum(CheckInKind, "checkin_kind"))
-    # Action du plan re-mesurée (targeted). La table plan_action arrive en B2 (« 0026 ») :
-    # colonne posée dès maintenant, contrainte FK ajoutée par cette migration-là.
-    plan_action_id: Mapped[Optional[uuid.UUID]] = mapped_column(default=None)
+    # Action du plan re-mesurée (targeted). FK posée par 0026 (table plan_action, B2).
+    plan_action_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("plan_action.id", ondelete="SET NULL", use_alter=True, name="fk_checkin_plan_action"),
+        default=None,
+    )
     # Compétences visées (liste d'UUID en str). Vide/None = toute la banque active (diagnostic).
     competency_ids: Mapped[Optional[list]] = mapped_column(JSON, default=None)
     # Restriction aux membres du groupe (targeted) ; None = toute la classe.

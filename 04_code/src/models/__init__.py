@@ -13,3 +13,4 @@ from . import session  # noqa: F401
 from . import audit  # noqa: F401
 from . import token  # noqa: F401
 from . import checkin  # noqa: F401
+from . import plan  # noqa: F401

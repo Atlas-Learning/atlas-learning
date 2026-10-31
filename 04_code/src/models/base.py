@@ -137,6 +137,39 @@ class CheckInStatus(str, enum.Enum):
     CLOSED = "closed"
 
 
+class PlanStatus(str, enum.Enum):
+    """Plan hebdomadaire d'une classe (refonte B2) : un seul actif par (classe, semaine)."""
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+
+
+class PlanActionKind(str, enum.Enum):
+    RETEACH = "reteach"
+    RECHECK = "recheck"
+
+
+class PlanConfidence(str, enum.Enum):
+    MEASURED = "measured"
+    PARTLY_ESTIMATED = "partly_estimated"
+
+
+class PlanActionStatus(str, enum.Enum):
+    PROPOSED = "proposed"
+    DONE = "done"
+    DISMISSED = "dismissed"
+
+
+class MemberSource(str, enum.Enum):
+    ATLAS = "atlas"
+    TEACHER_ADDED = "teacher_added"
+
+
+class ProofOutcome(str, enum.Enum):
+    UNLOCKED = "unlocked"
+    UNCHANGED = "unchanged"
+    NOT_RECHECKED = "not_rechecked"
+
+
 class AnswerFormat(str, enum.Enum):
     MCQ = "MCQ"
     NUMERIC = "NUMERIC"

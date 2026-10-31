@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from src.audit import log_action
 from src.models.audit import AuditLog
 from src.models.checkin import CheckIn
+from src.models.plan import PlanAction, PlanActionMember, WeeklyPlan
 from src.models.measurement import School, Student
 from src.models.org import (
     AppUser, Classroom, Membership, Organization, RosterRun, StudentClassroom,
@@ -91,6 +92,15 @@ def export_tenant(s: Session, org: Organization) -> dict:
     checkins = s.execute(
         select(CheckIn).where(CheckIn.school_id.in_(school_ids)).order_by(CheckIn.opened_at)
     ).scalars().all() if school_ids else []
+    plans = s.execute(
+        select(WeeklyPlan).where(WeeklyPlan.school_id.in_(school_ids)).order_by(WeeklyPlan.week_start)
+    ).scalars().all() if school_ids else []
+    actions = s.execute(select(PlanAction).where(PlanAction.plan_id.in_([p.id for p in plans]))
+                        ).scalars().all() if plans else []
+    members_of: dict = {}
+    for m in (s.execute(select(PlanActionMember).where(
+            PlanActionMember.action_id.in_([a.id for a in actions]))).scalars().all() if actions else []):
+        members_of.setdefault(m.action_id, []).append(str(m.student_id))
 
     return {
         "organization": {"id": str(org.id), "name": org.name, "domain": org.domain,
@@ -119,6 +129,13 @@ def export_tenant(s: Session, org: Organization) -> dict:
                       "opened_at": c.opened_at.isoformat() if c.opened_at else None,
                       "closed_at": c.closed_at.isoformat() if c.closed_at else None}
                      for c in checkins],
+        # Refonte B2 : plans hebdomadaires et membres des actions (données du tenant)
+        "weekly_plans": [{"id": str(p.id), "classroom_id": str(p.classroom_id), "week_start": p.week_start.isoformat(),
+                          "status": p.status.value,
+                          "actions": [{"id": str(a.id), "rank": a.rank, "status": a.status.value,
+                                       "student_ids": members_of.get(a.id, [])}
+                                      for a in actions if a.plan_id == p.id]}
+                         for p in plans],
     }
 
 

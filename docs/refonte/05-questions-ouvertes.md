@@ -8,7 +8,7 @@ Ne pas trancher ces points dans le code. Les marquer `[À CLARIFIER]` et les rem
 | Q2 | Nombre d'items par compétence pour une estimation exploitable en 10 min | B1, B2 | Lire `src/engine/stopping.py` et proposer une valeur. B1 livré avec les règles d'arrêt existantes (`StopConfig`) : un check-in `full` sans `competency_ids` couvre toute la banque active ; à resserrer sur l'unité pilote quand Q3 sera tranchée |
 | Q3 | Liste des compétences de l'unité pilote qui ont besoin d'une mini-leçon | B3 | Les racines produites par le plan de démo de la classe 4B |
 | Q4 | Qui rédige et relit les mini-leçons (EN et AR) | B3 | Nassim rédige l'EN, le linguiste valide l'AR |
-| Q5 | Jour et heure du message hebdomadaire, réglage par école ou par pays | B6 | Par école, défaut lundi 7 h heure locale (dimanche en Arabie saoudite) |
+| Q5 | Jour et heure du message hebdomadaire, réglage par école ou par pays | B6 | Par école, défaut lundi 7 h heure locale (dimanche en Arabie saoudite). B2 date le plan au lundi ISO de la semaine de clôture (`plan_service.week_start_of`) ; si la semaine commence le dimanche pour l'école, seule la date affichée changera |
 | Q6 | Correspondance Year (UK) ↔ Grade pour `Classroom.grade` | A1 | Year N = Grade N−1 |
 | Q7 | Seuil de réponses avant qu'un item d'école puisse entrer en mesure | E3 | À fixer après le pilote |
 | Q8 | Format de stockage des critères de succès d'un pilote | D6 | JSON libre sur `Organization`, liste `{label, status}` |
@@ -18,4 +18,5 @@ Ne pas trancher ces points dans le code. Les marquer `[À CLARIFIER]` et les rem
 | Q12 | Mode tablette partagée si les élèves n'ont pas d'appareil | B1 | Hors périmètre du premier pilote |
 | Q13 | ~~Provisioning des memberships `dept_lead` et `group_admin`~~ **Tranché le 2026-10-31** : attribution par email, SSO ou lien magique, voir `06-attribution-des-roles.md` | — | Reste : écran admin IT (I1) |
 | Q15 | ~~`template_key` de la banque antérieure à A2~~ **Tranché le 2026-10-31** : `scripts/backfill_template_keys.py` apparie (compétence, énoncé, réponse) avec le rendu des générateurs et pose la clé sans toucher aux items, réponses ni calibration ; les non-appariés et ambigus sont listés, jamais inventés (`src/items/templates.py`) | — | Lancer le backfill avant toute régénération (A3) |
+| Q16 | `observed_error` d'un membre (ex. « 1/3 + 1/6 = 2/9 on 3 of 4 items ») : analyse des réponses par motif d'erreur, absente aujourd'hui | B5 (E3) | Colonne posée (B2), vide ; à alimenter par une analyse des distracteurs choisis dans les réponses du check-in |
 | Q14 | ~~Lecture du curriculum par `group_admin` et `dept_lead`~~ **Tranché le 2026-10-31** : le choix du curriculum affiché est réservé au super admin Atlas (`POST /admin/curriculum?organization_id=`) ; les admins d'école le lisent ; les autres rôles le verront via la phase C | C2, C3 | — |

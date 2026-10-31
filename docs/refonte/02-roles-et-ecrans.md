@@ -47,7 +47,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **E1 · Cette semaine** — `maquettes/Main.dc.html`, version arabe `maquettes/Main-AR.dc.html`
 - Route : `/teacher` (redirige vers la classe par défaut) et `/teacher/[classroomId]/week`
-- API : `GET /classrooms/{id}/plan?week=YYYY-MM-DD`, `GET /classrooms/{id}/proofs?since=`
+- API : `GET /classrooms/{id}/plan?week=YYYY-MM-DD` (livré B2 ; 404 explicite = état vide), `GET /classrooms/{id}/proofs?since=` (B4)
 - Acceptation :
   - affiche 2 à 4 `PlanAction` triées par nombre d'élèves débloquables ;
   - chaque action montre cause racine → compétence bloquée, la phrase « parce que », le badge mesuré / partiellement estimé, les membres ;
@@ -66,7 +66,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **E3 · Groupe et mini-leçon** — `maquettes/Group.dc.html`
 - Route : `/teacher/[classroomId]/actions/[actionId]`
-- API : `GET /plan-actions/{id}`, `PATCH /plan-actions/{id}/members`, `POST /plan-actions/{id}/done`, `POST /plan-actions/{id}/dismiss`, `GET /lessons/{id}`
+- API : `GET /plan-actions/{id}`, `PATCH /plan-actions/{id}/members` `{add, remove}`, `POST /plan-actions/{id}/dismiss` (livrés B2) ; `POST /plan-actions/{id}/done` (B4), `GET /lessons/{id}` (B3)
 - Point de départ : `web/components/DiagnosisBlock.tsx`, `RemediationModal.tsx`, `POST /remediation/preview`
 - Acceptation :
   - liste des élèves avec l'erreur typique observée et l'état de la compétence racine ;

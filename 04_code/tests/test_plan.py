@@ -301,6 +301,25 @@ def test_observed_error_from_checkin_responses_and_lesson_attached():
         app.dependency_overrides.clear()
 
 
+def test_class_matrix_states_and_member_root_state():
+    client, ids, s = _setup()
+    try:
+        h = _auth(ids["teacher"])
+        m = client.get(f"/classrooms/{ids['cls']}/matrix", headers=h).json()
+        assert [c["code"] for c in m["competencies"]] == ["M.A", "M.B", "M.C", "M.D"]
+        by_ref = {st["external_ref"]: st for st in m["students"]}
+        assert by_ref["S0"]["cells"]["M.A"]["state"] == "progress" and by_ref["S0"]["cells"]["M.D"]["state"] == "unmeasured"
+        assert by_ref["S3"]["cells"]["M.A"]["state"] == "mastered" and by_ref["S3"]["n_mastered"] == 2
+        assert client.get(f"/classrooms/{ids['cls']}/matrix", headers=_auth(ids["other_t"])).status_code == 403
+        ci = client.post(f"/classrooms/{ids['cls']}/checkins", json={"kind": "full"}, headers=h).json()
+        client.post(f"/checkins/{ci['id']}/close", headers=h)
+        act = client.get(f"/classrooms/{ids['cls']}/plan", headers=h).json()["actions"][0]
+        roots = {mm["external_ref"]: mm["root"] for mm in act["members"]}
+        assert roots["S0"] == {"state": "progress", "elo": 1200.0, "confidence": 0.9}
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_week_start_is_iso_monday():
     assert plan_service.week_start_of(date(2026, 11, 5)) == date(2026, 11, 2)     # jeudi → lundi
     assert plan_service.week_start_of(date(2026, 11, 2)) == date(2026, 11, 2)

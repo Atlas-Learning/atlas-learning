@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell, useMe } from "@/components/AppShell";
 import { useLang } from "@/components/LanguageProvider";
 import { Button, Card, ErrorPanel, Spinner, cx } from "@/components/ui";
 import { api } from "@/lib/api";
-import type { ItemContent, NextItem } from "@/lib/types";
+import type { ItemContent, NextItem, Trajectory } from "@/lib/types";
 
 export default function StudentPage() {
   return (
@@ -30,14 +30,35 @@ function SessionFlow() {
   const [skills, setSkills] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [startTraj, setStartTraj] = useState<Trajectory | null>(null);
+  const [endTraj, setEndTraj] = useState<Trajectory | null>(null);
 
   const studentId = me?.own_student_id;
+
+  // S1 → S2 : une session de check-in déjà ouverte (?session=) démarre sans intro.
+  useEffect(() => {
+    if (!studentId) return;
+    const sid = new URLSearchParams(window.location.search).get("session");
+    if (!sid || sessionId) return;
+    api.studentTrajectory(studentId).then(setStartTraj).catch(() => undefined);
+    setSessionId(sid);
+    api.nextItem(sid).then((first) => { handleNext(first); setPhase(first.done ? "done" : "question"); })
+      .catch((e) => setError((e as Error).message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId]);
+
+  // S3 : à la fin, l'état après pour mettre en avant ce qui vient d'être débloqué.
+  useEffect(() => {
+    if (phase !== "done" || !studentId) return;
+    api.studentTrajectory(studentId).then(setEndTraj).catch(() => undefined);
+  }, [phase, studentId]);
 
   async function begin() {
     if (!studentId) return;
     setBusy(true);
     setError(null);
     try {
+      api.studentTrajectory(studentId).then(setStartTraj).catch(() => undefined);
       const { session_id } = await api.startSession(studentId);
       setSessionId(session_id);
       const first = await api.nextItem(session_id);
@@ -103,13 +124,43 @@ function SessionFlow() {
         <Button variant="accent" className="mt-6 px-8 py-3 text-base" disabled={busy} onClick={begin}>
           {busy ? <Spinner /> : t("session.begin")}
         </Button>
+        <p className="mt-4 text-sm"><a href="/student/join" className="font-medium text-brand-600 hover:underline">{t("join.link")}</a></p>
       </Card>
     );
   }
 
   if (phase === "done") {
+    const before = new Set((startTraj?.mastered ?? []).map((m) => m.label_en));
+    const unlocked = (endTraj?.mastered ?? []).filter((m) => !before.has(m.label_en));
+    const lbl = (m: { label_en: string; label_ar: string }) => (lang === "ar" ? m.label_ar : m.label_en);
     return (
       <Card className="p-8 text-center">
+        {/* S3 · Débloqué : or pour l'accompli, puis en progrès et prochaine étape. Jamais de note. */}
+        {unlocked.length > 0 && (
+          <div className="mx-auto mb-6 max-w-md rounded-2xl bg-gold-50 p-5 ring-1 ring-gold-200">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold-700">{t("done.unlocked")}</p>
+            <ul className="mt-2 space-y-1">
+              {unlocked.map((m) => <li key={m.label_en} className="text-lg font-semibold text-gold-800">✦ {lbl(m)}</li>)}
+            </ul>
+          </div>
+        )}
+        {endTraj && unlocked.length === 0 && <p className="mx-auto mb-4 max-w-md text-sm text-sand-500">{t("done.nothing")}</p>}
+        {endTraj && (endTraj.closing_gaps.length > 0 || endTraj.next_step) && (
+          <div className="mx-auto mb-6 grid max-w-md gap-3 text-start sm:grid-cols-2">
+            {endTraj.closing_gaps.length > 0 && (
+              <div className="rounded-xl bg-sand-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gold-700">{t("done.progress")}</p>
+                <ul className="mt-1 text-sm text-sand-700">{endTraj.closing_gaps.slice(0, 3).map((g) => <li key={g.label_en}>{lbl(g)}</li>)}</ul>
+              </div>
+            )}
+            {endTraj.next_step && (
+              <div className="rounded-xl bg-brand-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t("done.next")}</p>
+                <p className="mt-1 text-sm text-sand-700">{lang === "ar" ? endTraj.next_step.skill_label_ar : endTraj.next_step.skill_label_en}</p>
+              </div>
+            )}
+          </div>
+        )}
         <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-mastered">
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />

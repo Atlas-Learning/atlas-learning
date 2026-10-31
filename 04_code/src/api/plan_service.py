@@ -186,11 +186,21 @@ def action_payload(s: Session, a: PlanAction, *, with_members: bool = True) -> d
     if with_members:
         students = {st.id: st for st in s.execute(select(Student).where(
             Student.id.in_([m.student_id for m in members]))).scalars()} if members else {}
+        abilities = {a.student_id: a for a in s.execute(select(StudentCompetencyAbility).where(
+            StudentCompetencyAbility.competency_id == a.root_cause_competency_id,
+            StudentCompetencyAbility.student_id.in_([m.student_id for m in members]))).scalars()} if members else {}
+        def _root_state(ab):
+            if ab is None:
+                return {"state": "unmeasured", "elo": None, "confidence": None}
+            estimated = ab.n_direct == 0 or ab.confidence < 0.5
+            return {"state": "estimated" if estimated else ("mastered" if ab.ability_elo >= 1500.0 else "progress"),
+                    "elo": round(ab.ability_elo, 1), "confidence": round(ab.confidence, 3)}
         out["members"] = [{
             "student_id": str(m.student_id),
             "external_ref": (students.get(m.student_id).external_ref if students.get(m.student_id) else None),
             "source": m.source.value, "removed_by_teacher": m.removed_by_teacher,
             "observed_error": m.observed_error,
+            "root": _root_state(abilities.get(m.student_id)),
         } for m in members]
     return out
 

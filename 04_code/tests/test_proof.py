@@ -145,3 +145,28 @@ def test_ci_half_width_shrinks_with_confidence():
     assert proof_service.ci_half_width(1.0) == 25.0
     assert proof_service.ci_half_width(0.5) == 100.0
     assert proof_service.ci_half_width(0.0) > proof_service.ci_half_width(0.9) > proof_service.ci_half_width(1.0)
+
+
+def test_student_unlock_history():
+    client, ids, s = _setup()
+    try:
+        h, act = _done(client, ids)
+        rc = client.post(f"/plan-actions/{act['id']}/done", headers=h).json()["recheck"]
+        client.post(f"/checkins/{rc['id']}/start", headers=h)
+        from src.models.item import Item
+        from src.models.measurement import Response
+        from src.models.session import AssessmentSession
+        ci = s.get(CheckIn, uuid.UUID(rc["id"]))
+        item_a = s.execute(select(Item).where(Item.competency_id == ids["A"])).scalars().first()
+        sess = AssessmentSession(student_id=ids["students"][0], school_id=ids["school"], checkin_id=ci.id); s.add(sess); s.flush()
+        s.add(Response(school_id=ids["school"], student_id=ids["students"][0], item_id=item_a.id, competency_id=ids["A"],
+                       is_correct=True, selected="1", session_id=sess.id))
+        a0 = s.get(StudentCompetencyAbility, (ids["students"][0], ids["A"])); a0.ability_elo, a0.confidence = 1650.0, 0.8
+        s.commit()
+        client.post(f"/checkins/{rc['id']}/close", headers=h)
+        u = client.get(f"/students/{ids['students'][0]}/unlocks", headers=h).json()
+        assert [x["competency_code"] for x in u["unlocks"]] == ["M.A"] and u["unlocks"][0]["before_elo"] == 1200.0
+        assert client.get(f"/students/{ids['students'][1]}/unlocks", headers=h).json()["unlocks"] == []
+        assert client.get(f"/students/{ids['students'][0]}/unlocks", headers=_auth(ids["other_t"])).status_code == 403
+    finally:
+        app.dependency_overrides.clear()

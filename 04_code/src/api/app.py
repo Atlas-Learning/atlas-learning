@@ -30,6 +30,7 @@ from src.api.session_service import (
     submit_response,
 )
 from src.api.views_service import (
+    class_matrix,
     class_digest,
     class_gaps,
     curriculum_coverage,
@@ -53,7 +54,7 @@ from src.api import lesson_service
 from src.models.lesson import MiniLesson
 from src.models.plan import PlanAction, WeeklyPlan
 from datetime import date
-from src.models.base import CheckInKind, CheckInStatus
+from src.models.base import CheckInKind, CheckInStatus, ProofOutcome
 from src.models.checkin import CheckIn
 from src.items.arabic import (
     ALLAM_MODEL,
@@ -1369,6 +1370,35 @@ def set_classroom_grade(classroom_id: uuid.UUID, body: ClassroomGradeIn,
     return {"classroom_id": str(cls.id), "grade": cls.grade}
 
 
+@app.get("/classrooms/{classroom_id}/matrix")
+def classroom_matrix_ep(classroom_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                        s: Session = Depends(get_db)):
+    """E5 · Matrice élèves × compétences (4 états). Lisible par qui lit la classe."""
+    cls = _get_live_classroom(s, classroom_id)
+    if not can_access_classroom(ctx, classroom_id, cls.school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cette classe")
+    return class_matrix(s, classroom_id)
+
+
+@app.get("/students/{student_id}/unlocks")
+def student_unlocks_ep(student_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                       s: Session = Depends(get_db)):
+    """E6 / S3 · Historique des déblocages prouvés d'un élève (preuves `unlocked`)."""
+    from src.models.plan import Proof
+    st = _authorize_student(ctx, s, student_id)
+    rows = s.execute(select(Proof).where(Proof.student_id == st.id, Proof.outcome == ProofOutcome.UNLOCKED)
+                     .order_by(Proof.computed_at.desc())).scalars().all()
+    comps = {c.id: c for c in s.execute(select(Competency).where(
+        Competency.id.in_([p.competency_id for p in rows]))).scalars()} if rows else {}
+    return {"student_id": str(st.id), "unlocks": [{
+        "competency_code": comps[p.competency_id].code if p.competency_id in comps else None,
+        "label_en": comps[p.competency_id].label_en if p.competency_id in comps else None,
+        "label_ar": comps[p.competency_id].label_ar if p.competency_id in comps else None,
+        "before_elo": p.before_elo, "after_elo": p.after_elo,
+        "unlocked_at": p.computed_at.isoformat() if p.computed_at else None,
+    } for p in rows]}
+
+
 @app.get("/students/{student_id}/profile")
 def get_student_profile(student_id: uuid.UUID, ctx: UserContext = Depends(get_context),
                         s: Session = Depends(get_db)):
@@ -2058,6 +2088,53 @@ def lesson_activate(lesson_id: uuid.UUID, ctx: UserContext = Depends(get_context
         lesson_service.activate(s, lesson, by=ctx.user_id)
     except lesson_service.LessonError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    s.commit()
+    return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
+
+
+# ---------- éditeur de leçons côté Atlas (O5, refonte B3/B5) ----------
+#
+# Même validation que les fichiers data/lessons/*.json (lesson_service.LessonDoc), sans fichier.
+# Relecteur de contenu et super admin. La couverture des racines (Q3) est servie avec.
+
+@app.get("/ops/lessons")
+def ops_lessons_ep(ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    comps = {c.id: c for c in s.execute(select(Competency)).scalars()}
+    return {"lessons": [lesson_service.payload(l, comps.get(l.competency_id), full=False)
+                        for l in lesson_service.all_lessons(s)],
+            "coverage": lesson_service.coverage(s)}
+
+
+@app.post("/ops/lessons")
+def ops_lesson_create(body: dict, ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    try:
+        doc = lesson_service.doc_from_payload(body)
+        lesson, created = lesson_service.upsert_lesson(s, doc)
+    except lesson_service.LessonError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    log_action(s, action="lesson.create" if created else "lesson.update", user_id=ctx.user_id,
+               resource_type="mini_lesson", resource_id=lesson.id, details={"key": lesson.key})
+    s.commit()
+    return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
+
+
+@app.put("/ops/lessons/{lesson_id}")
+def ops_lesson_update(lesson_id: uuid.UUID, body: dict, ctx: UserContext = Depends(get_context),
+                      s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    lesson = _get_lesson(s, lesson_id)
+    try:
+        doc = lesson_service.doc_from_payload(body, key=lesson.key)
+        lesson_service.upsert_lesson(s, doc)
+    except lesson_service.LessonError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    log_action(s, action="lesson.update", user_id=ctx.user_id, resource_type="mini_lesson",
+               resource_id=lesson.id, details={"key": lesson.key})
     s.commit()
     return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
 

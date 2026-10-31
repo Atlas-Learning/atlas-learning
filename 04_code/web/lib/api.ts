@@ -4,6 +4,18 @@
 import type {
   ArCoverage,
   ArItem,
+  CheckInClosed,
+  CheckInInfo,
+  CheckInProgress,
+  ClassMatrix,
+  ClassroomProofs,
+  Lesson,
+  LessonCoverage,
+  LessonSummary,
+  PlanAction,
+  ProofCardData,
+  UnlockHistory,
+  WeeklyPlan,
   ClassDigest,
   ClassGap,
   CurriculumSettings,
@@ -283,6 +295,41 @@ export const api = {
       `/ops/templates/${encodeURIComponent(key)}/regenerate?dry_run=${dryRun ? "true" : "false"}`,
       { method: "POST" },
     ),
+
+  // — Refonte phase B : plan, check-ins, preuves, leçons —
+  classroomPlan: (classroomId: string, week?: string) =>
+    request<WeeklyPlan>(`/classrooms/${classroomId}/plan${week ? `?week=${week}` : ""}`),
+  planAction: (actionId: string) => request<PlanAction>(`/plan-actions/${actionId}`),
+  planActionMembers: (actionId: string, add: string[], remove: string[]) =>
+    request<PlanAction>(`/plan-actions/${actionId}/members`, { method: "PATCH", body: JSON.stringify({ add, remove }) }),
+  planActionDismiss: (actionId: string) => request<PlanAction>(`/plan-actions/${actionId}/dismiss`, { method: "POST" }),
+  planActionDone: (actionId: string) =>
+    request<{ action: PlanAction; recheck: CheckInInfo }>(`/plan-actions/${actionId}/done`, { method: "POST" }),
+  planActionProof: (actionId: string) => request<ProofCardData>(`/plan-actions/${actionId}/proof`),
+  classroomProofs: (classroomId: string, since?: string) =>
+    request<ClassroomProofs>(`/classrooms/${classroomId}/proofs${since ? `?since=${since}` : ""}`),
+  classroomMatrix: (classroomId: string) => request<ClassMatrix>(`/classrooms/${classroomId}/matrix`),
+  openCheckin: (classroomId: string, body: { kind: "full" | "targeted"; competency_ids?: string[]; student_ids?: string[]; action_id?: string }) =>
+    request<CheckInInfo>(`/classrooms/${classroomId}/checkins`, { method: "POST", body: JSON.stringify(body) }),
+  classroomCheckins: (classroomId: string) =>
+    request<{ classroom_id: string; checkins: CheckInInfo[] }>(`/classrooms/${classroomId}/checkins`),
+  checkin: (checkinId: string) => request<CheckInInfo>(`/checkins/${checkinId}`),
+  checkinProgress: (checkinId: string) => request<CheckInProgress>(`/checkins/${checkinId}/progress`),
+  closeCheckin: (checkinId: string) => request<CheckInClosed>(`/checkins/${checkinId}/close`, { method: "POST" }),
+  startCheckin: (checkinId: string) => request<CheckInInfo>(`/checkins/${checkinId}/start`, { method: "POST" }),
+  joinCheckin: (code: string, locale: string) =>
+    request<{ session_id: string; checkin_id: string; status: string; locale: string }>("/checkins/join", {
+      method: "POST",
+      body: JSON.stringify({ code, locale }),
+    }),
+  lesson: (lessonId: string) => request<Lesson>(`/lessons/${lessonId}`),
+  studentUnlocks: (studentId: string) => request<UnlockHistory>(`/students/${studentId}/unlocks`),
+  opsLessons: () => request<{ lessons: LessonSummary[]; coverage: LessonCoverage[] }>("/ops/lessons"),
+  opsLessonCreate: (body: Record<string, unknown>) =>
+    request<Lesson>("/ops/lessons", { method: "POST", body: JSON.stringify(body) }),
+  opsLessonUpdate: (lessonId: string, body: Record<string, unknown>) =>
+    request<Lesson>(`/ops/lessons/${lessonId}`, { method: "PUT", body: JSON.stringify(body) }),
+  lessonActivate: (lessonId: string) => request<Lesson>(`/lessons/${lessonId}/activate`, { method: "POST" }),
 
   // — Session élève —
   startSession: (student_id: string) =>

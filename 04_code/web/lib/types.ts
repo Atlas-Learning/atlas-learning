@@ -13,6 +13,154 @@ export interface Me {
   own_student_id: string | null;
 }
 
+// Refonte phase B — plan de la semaine, check-ins, preuves, leçons (écrans E1–E6, S1–S3).
+export interface CompRef {
+  competency_id: string;
+  code: string;
+  label_en: string;
+  label_ar: string;
+}
+export type CellState = "mastered" | "progress" | "estimated" | "unmeasured";
+
+export interface LessonStep {
+  kind: "warmup" | "model" | "guided" | "exit";
+  minutes: number;
+  body_en: string;
+  body_ar?: string | null;
+  items?: unknown[];
+}
+export interface LessonSummary {
+  id: string;
+  key: string;
+  competency_id: string;
+  title_en: string;
+  title_ar: string | null;
+  duration_min: number;
+  status: "draft" | "linguist_validated" | "active";
+  origin: "atlas" | "school";
+  version: number;
+  arabic_complete: boolean;
+  competency?: { code: string; label_en: string; label_ar: string };
+}
+export interface Lesson extends LessonSummary {
+  steps: LessonStep[];
+}
+export interface LessonCoverage {
+  competency_id: string;
+  code: string;
+  label_en: string;
+  label_ar: string;
+  grade: number;
+  unlocks: number;
+  lessons: LessonSummary[];
+  best_status: string | null;
+}
+
+export interface PlanMember {
+  student_id: string;
+  external_ref: string | null;
+  source: "atlas" | "teacher_added";
+  removed_by_teacher: boolean;
+  observed_error: string | null;
+  root: { state: CellState; elo: number | null; confidence: number | null };
+}
+export interface PlanAction {
+  id: string;
+  plan_id: string;
+  kind: "reteach" | "recheck";
+  rank: number;
+  status: "proposed" | "done" | "dismissed";
+  confidence: "measured" | "partly_estimated";
+  root_cause: CompRef;
+  blocked: CompRef;
+  because_en: string;
+  because_ar: string;
+  lesson_id: string | null;
+  lesson: LessonSummary | null;
+  n_members: number;
+  done_at: string | null;
+  dismissed_at: string | null;
+  members?: PlanMember[];
+}
+export interface WeeklyPlan {
+  id: string;
+  classroom_id: string;
+  week_start: string;
+  status: "active" | "superseded";
+  generated_at: string | null;
+  source_checkin_id: string | null;
+  actions: PlanAction[];
+}
+
+export interface CheckInInfo {
+  id: string;
+  classroom_id: string;
+  kind: "full" | "targeted";
+  status: "scheduled" | "open" | "closed";
+  n_competencies: number;
+  competency_ids: string[] | null;
+  n_members: number | null;
+  plan_action_id: string | null;
+  opened_at: string | null;
+  closed_at: string | null;
+  code?: string;
+}
+export interface CheckInProgress {
+  checkin_id: string;
+  kind: "full" | "targeted";
+  status: "scheduled" | "open" | "closed";
+  counts: { expected: number; joined: number; in_progress: number; finished: number; absent: number };
+  tiles: { state: "absent" | "in_progress" | "finished"; n_answered: number }[];
+}
+export interface CheckInClosed {
+  checkin_id: string;
+  already_closed: boolean;
+  closed_sessions: number;
+  plan_id: string | null;
+  proof: { action_id: string; unlocked: number; unchanged: number; not_rechecked: number } | null;
+  progress: CheckInProgress;
+}
+
+export interface ProofRow {
+  student_id: string;
+  external_ref: string | null;
+  competency_code: string | null;
+  before: { elo: number; confidence: number; measured: boolean };
+  after: { elo: number; confidence: number; measured: boolean; ci_low: number; ci_high: number } | null;
+  outcome: "unlocked" | "unchanged" | "not_rechecked";
+  suggestion: { kind: "upstream_cause" | "practise_again" | "add_to_next_recheck"; competency?: CompRef | null } | null;
+}
+export interface ProofCardData {
+  action_id: string;
+  status: string;
+  done_at: string | null;
+  root_cause: CompRef | null;
+  recheck: CheckInInfo | null;
+  computed: boolean;
+  header: { unlocked: number; rechecked: number; not_rechecked: number; interval_note: string };
+  students: ProofRow[];
+  loop_closed: boolean;
+}
+export interface ClassroomProofs {
+  classroom_id: string;
+  loops_closed: number;
+  proofs: ProofCardData[];
+}
+export interface ClassMatrix {
+  classroom_id: string;
+  competencies: { code: string; label_en: string; label_ar: string; grade: number | null }[];
+  students: {
+    student_id: string;
+    external_ref: string;
+    cells: Record<string, { state: CellState; elo: number | null; confidence: number | null }>;
+    n_mastered: number;
+  }[];
+}
+export interface UnlockHistory {
+  student_id: string;
+  unlocks: { competency_code: string | null; label_en: string | null; label_ar: string | null; before_elo: number; after_elo: number | null; unlocked_at: string | null }[];
+}
+
 // File de revue de la banque (refonte A4, écran O2) — /ops/review.
 export type ReviewSource = "flag" | "validation" | "school" | "arabic";
 export type ReviewAction =

@@ -22,7 +22,10 @@ function navFor(me: Me): NavItem[] {
   const items: NavItem[] = [];
   if (r.has("teacher")) {
     const cls = me.classrooms[0];
-    if (cls) items.push({ href: `/teacher/${cls.id}`, key: "nav.class" });
+    if (cls) {
+      items.push({ href: `/teacher/${cls.id}/week`, key: "nav.week" });
+      items.push({ href: `/teacher/${cls.id}`, key: "nav.class" });
+    }
   }
   if (r.has("ped_admin") || r.has("super_admin")) {
     const school = me.schools[0];
@@ -42,7 +45,10 @@ function navFor(me: Me): NavItem[] {
     if (org) items.push({ href: `/group/${org.id}`, key: "nav.group" });
   }
   if (r.has("it_admin")) items.push({ href: "/it", key: "nav.security" });
-  if (r.has("content_reviewer") || r.has("super_admin")) items.push({ href: "/ops/review", key: "nav.review" });
+  if (r.has("content_reviewer") || r.has("super_admin")) {
+    items.push({ href: "/ops/review", key: "nav.review" });
+    items.push({ href: "/ops/lessons", key: "nav.lessons" });
+  }
   if (r.has("linguist")) items.push({ href: "/linguist", key: "nav.linguist" });
   if (r.has("student") && me.own_student_id) items.push({ href: "/student", key: "nav.session" });
   if (r.has("parent") && me.child_student_ids[0])
@@ -109,7 +115,9 @@ function Header({ me }: { me: Me }) {
 
         <nav className="ms-2 hidden items-center gap-1 sm:flex">
           {items.map((it) => {
-            const active = pathname === it.href || pathname.startsWith(it.href + "/");
+            const active = it.key === "nav.class"
+              ? pathname === it.href || (pathname.startsWith(it.href + "/") && !pathname.startsWith(it.href + "/week") && !pathname.includes("/checkin/") && !pathname.includes("/actions/"))
+              : pathname === it.href || pathname.startsWith(it.href + "/");
             return (
               <Link
                 key={it.href}

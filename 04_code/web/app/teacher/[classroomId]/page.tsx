@@ -7,7 +7,9 @@ import { useLang } from "@/components/LanguageProvider";
 import { Card, Chip, EmptyState, ErrorPanel, Loading, SectionTitle, cx } from "@/components/ui";
 import { StandardBadge } from "@/components/StandardBadge";
 import { api } from "@/lib/api";
-import type { ClassDigest, ClassGap, StudentRow } from "@/lib/types";
+import type { ClassDigest, ClassGap, ClassMatrix, StudentRow } from "@/lib/types";
+import { CELL_STYLE, StateDot } from "@/components/MasteryRange";
+import type { DictKey } from "@/lib/i18n";
 import { eloToLevel } from "@/lib/mastery";
 
 export default function TeacherClassPage({ params }: { params: { classroomId: string } }) {
@@ -23,6 +25,7 @@ function ClassView({ classroomId }: { classroomId: string }) {
   const [gaps, setGaps] = useState<ClassGap[] | null>(null);
   const [students, setStudents] = useState<StudentRow[] | null>(null);
   const [digest, setDigest] = useState<ClassDigest | null>(null);
+  const [matrix, setMatrix] = useState<ClassMatrix | null>(null);
   const [className, setClassName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +38,7 @@ function ClassView({ classroomId }: { classroomId: string }) {
         setDigest(d);
       })
       .catch((e) => setError(e.message));
+    api.classroomMatrix(classroomId).then(setMatrix).catch(() => setMatrix(null));
   }, [classroomId]);
 
   if (error) return <ErrorPanel detail={error} />;
@@ -48,6 +52,9 @@ function ClassView({ classroomId }: { classroomId: string }) {
         <p className="text-sm font-medium text-brand-600">{className}</p>
         <h1 className="mt-0.5 text-2xl font-semibold text-sand-800">{t("class.title")}</h1>
         <p className="mt-1 text-sm text-sand-500">{t("class.subtitle")}</p>
+        <Link href={`/teacher/${classroomId}/week`} className="mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
+          {t("class.week.link")}
+        </Link>
       </header>
 
       {!hasData ? (
@@ -55,6 +62,7 @@ function ClassView({ classroomId }: { classroomId: string }) {
       ) : (
         <div className="space-y-6">
         {digest && <DigestBanner digest={digest} />}
+        {matrix && matrix.competencies.length > 0 && <MatrixCard matrix={matrix} classroomId={classroomId} />}
         <div className="grid gap-6 lg:grid-cols-5">
           {/* Priorités de classe — regroupées par cause racine, triées par fréquence. */}
           <Card className="p-5 lg:col-span-3">
@@ -127,6 +135,56 @@ function ClassView({ classroomId }: { classroomId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+// E5 · Matrice élèves × compétences : quatre états, pas de scores, pas de rouge (B5).
+function MatrixCard({ matrix, classroomId }: { matrix: ClassMatrix; classroomId: string }) {
+  const { t, lang } = useLang();
+  const states = ["mastered", "progress", "estimated", "unmeasured"] as const;
+  return (
+    <Card className="p-5">
+      <SectionTitle title={t("matrix.title")} subtitle={t("matrix.subtitle")} />
+      <div className="mb-3 flex flex-wrap gap-3 text-xs text-sand-500">
+        {states.map((s) => (
+          <span key={s} className="flex items-center gap-1.5"><StateDot state={s} /> {t(`matrix.legend.${s}` as DictKey)}</span>
+        ))}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="text-xs">
+          <thead>
+            <tr>
+              <th className="sticky start-0 bg-white px-2 py-1 text-start font-medium text-sand-500">{t("class.col.student")}</th>
+              {matrix.competencies.map((c) => (
+                <th key={c.code} className="px-1 py-1 font-normal text-sand-400" title={lang === "ar" ? c.label_ar : c.label_en}>
+                  <span className="block max-w-[3.5rem] truncate" data-ltr>{c.code.split(".").slice(-1)[0]}</span>
+                </th>
+              ))}
+              <th className="px-2 py-1 font-medium text-sand-500">{t("matrix.legend.mastered")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.students.map((st) => (
+              <tr key={st.student_id} className="hover:bg-sand-25">
+                <td className="sticky start-0 bg-white px-2 py-1">
+                  <Link href={`/teacher/${classroomId}/s/${st.student_id}`} className="num font-medium text-brand-700 hover:underline">{st.external_ref}</Link>
+                </td>
+                {matrix.competencies.map((c) => {
+                  const cell = st.cells[c.code];
+                  return (
+                    <td key={c.code} className="px-1 py-1 text-center" title={`${lang === "ar" ? c.label_ar : c.label_en} · ${t(`matrix.legend.${cell.state}` as DictKey)}`}>
+                      <span className={cx("mx-auto block h-4 w-6 rounded-sm", CELL_STYLE[cell.state].bg)}
+                        style={{ backgroundImage: cell.state === "estimated" ? "repeating-linear-gradient(45deg, rgba(255,255,255,.6) 0 4px, transparent 4px 8px)" : undefined }} />
+                    </td>
+                  );
+                })}
+                <td className="num px-2 py-1 text-center text-sand-600">{st.n_mastered}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }
 

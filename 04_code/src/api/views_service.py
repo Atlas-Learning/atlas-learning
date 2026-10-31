@@ -719,3 +719,49 @@ def remediation_preview(s: Session, competency_code: str, lang: str = "en") -> d
         "item_id": str(it.id), "answer_format": it.answer_format.value,
         "content": public,
     }
+
+
+def class_matrix(s: Session, classroom_id: uuid.UUID) -> dict:
+    """E5 · Matrice élèves × compétences (refonte B5) avec 4 états : mastered (mesuré et
+    maîtrisé), progress (mesuré, prochaine étape), estimated (propagé ou confiance < 0,5),
+    unmeasured (aucune ligne). Colonnes = compétences estimées pour au moins un élève de la classe,
+    par niveau puis code. Ni rouge ni classement : des états, pas des scores."""
+    student_ids = sorted(_class_student_ids(s, classroom_id), key=str)
+    if not student_ids:
+        return {"classroom_id": str(classroom_id), "competencies": [], "students": []}
+    students = {st.id: st for st in s.execute(select(Student).where(Student.id.in_(student_ids))).scalars()}
+    rows = s.execute(select(StudentCompetencyAbility)
+                     .where(StudentCompetencyAbility.student_id.in_(student_ids))).scalars().all()
+    code_of, label_of, _, label_ar_of = _code_maps(s)
+    meta = _competency_meta(s)
+    comp_ids = sorted({r.competency_id for r in rows if r.competency_id in code_of},
+                      key=lambda c: (meta.get(code_of[c], {}).get("grade") or 0, code_of[c]))
+    by_student: dict = {}
+    for r in rows:
+        by_student.setdefault(r.student_id, {})[r.competency_id] = r
+
+    def state(r: Optional[StudentCompetencyAbility]) -> str:
+        if r is None:
+            return "unmeasured"
+        if r.n_direct == 0 or r.confidence < 0.5:
+            return "estimated"
+        return "mastered" if r.ability_elo >= MASTERY_ELO else "progress"
+
+    out_students = []
+    for sid in student_ids:
+        cells = {}
+        for cid in comp_ids:
+            r = by_student.get(sid, {}).get(cid)
+            cells[code_of[cid]] = {"state": state(r), "elo": round(r.ability_elo, 1) if r else None,
+                                   "confidence": round(r.confidence, 3) if r else None}
+        st = students.get(sid)
+        out_students.append({"student_id": str(sid), "external_ref": (st.external_ref if st else None) or "—",
+                             "cells": cells,
+                             "n_mastered": sum(1 for c in cells.values() if c["state"] == "mastered")})
+    return {
+        "classroom_id": str(classroom_id),
+        "competencies": [{"code": code_of[c], "label_en": label_of.get(code_of[c], code_of[c]),
+                          "label_ar": label_ar_of.get(code_of[c], code_of[c]),
+                          "grade": meta.get(code_of[c], {}).get("grade")} for c in comp_ids],
+        "students": out_students,
+    }

@@ -45,7 +45,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 ### Enseignant
 
-**E1 · Cette semaine** — `maquettes/Main.dc.html`, version arabe `maquettes/Main-AR.dc.html`
+**E1 · Cette semaine** — `maquettes/Main.dc.html`, version arabe `maquettes/Main-AR.dc.html` — livré (B5), vérification navigateur dans `07-tests-beta.md`
 - Route : `/teacher` (redirige vers la classe par défaut) et `/teacher/[classroomId]/week`
 - API : `GET /classrooms/{id}/plan?week=YYYY-MM-DD` (livré B2 ; 404 explicite = état vide), `GET /classrooms/{id}/proofs?since=` (B4)
 - Acceptation :
@@ -56,7 +56,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
   - compteur de boucles bouclées visible par l'enseignant seul ;
   - aucun plan : état vide qui propose le premier check-in.
 
-**E2 · Check-in projeté** — `maquettes/Checkin.dc.html`
+**E2 · Check-in projeté** — `maquettes/Checkin.dc.html` — livré (B5)
 - Route : `/teacher/[classroomId]/checkin/[checkinId]`
 - API : `POST /classrooms/{id}/checkins` `{kind: "full" | "targeted", competency_ids?, student_ids?, action_id?}` → `{id, code, …}` ; `GET /classrooms/{id}/checkins` ; `GET /checkins/{id}` (code visible par l'enseignant seul) ; `GET /checkins/{id}/progress` ; `POST /checkins/{id}/close` — livrés (B1)
 - Acceptation :
@@ -64,7 +64,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
   - `progress` ne renvoie que des compteurs (rejoints, en cours, terminés, absents) et une tuile anonyme par élève (invariant 5) ;
   - à la clôture, génération du plan (`full`) ou de la preuve (`targeted`) en moins d'une minute.
 
-**E3 · Groupe et mini-leçon** — `maquettes/Group.dc.html`
+**E3 · Groupe et mini-leçon** — `maquettes/Group.dc.html` — livré (B5)
 - Route : `/teacher/[classroomId]/actions/[actionId]`
 - API : `GET /plan-actions/{id}`, `PATCH /plan-actions/{id}/members` `{add, remove}`, `POST /plan-actions/{id}/dismiss` (livrés B2) ; `GET /lessons/{id}`, `GET /lessons?competency_id=`, `POST /linguist/lessons/{id}/arabic`, `POST /linguist/lessons/{id}/validate`, `POST /lessons/{id}/activate` (livrés B3) ; `POST /plan-actions/{id}/done` → `{action, recheck}` puis `POST /checkins/{id}/start` pour ouvrir le re-check planifié (livrés B4)
 - Point de départ : `web/components/DiagnosisBlock.tsx`, `RemediationModal.tsx`, `POST /remediation/preview`
@@ -74,7 +74,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
   - mini-leçon en étapes, EN et AR, avec boutons projeter et imprimer ;
   - « Marquer comme enseignée » crée un check-in `targeted` planifié pour les membres.
 
-**E4 · Carte de preuve** — `maquettes/Proof.dc.html`
+**E4 · Carte de preuve** — `maquettes/Proof.dc.html` — livré (B5)
 - Route : `/teacher/[classroomId]/actions/[actionId]/proof`
 - API : `GET /plan-actions/{id}/proof` (livré B4 : `header {unlocked, rechecked, not_rechecked}`, par élève `before/after/ci/outcome/suggestion`, `loop_closed`) ; `GET /classrooms/{id}/proofs?since=` (bandeau E1 + `loops_closed`)
 - Point de départ : `GET /schools/{school_id}/proof` (existant, niveau école)
@@ -84,12 +84,12 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
   - suggestions pour les inchangés (cause en amont) et les absents (ajout au prochain re-check) ;
   - partage au coordinateur.
 
-**E5 · Ma classe** — `maquettes/Class.dc.html`
+**E5 · Ma classe** — `maquettes/Class.dc.html` — matrice livrée (B5)
 - Route : `/teacher/[classroomId]` (refonte de la page existante)
 - API : `GET /classrooms/{id}/students`, `GET /classrooms/{id}/gaps` (existants)
 - Acceptation : matrice élèves × compétences de l'unité avec 4 états (maîtrisé, prochaine étape, estimé, non mesuré), groupe de la semaine, compétences débloquées ce trimestre.
 
-**E6 · Fiche élève** — `maquettes/Student-profile.dc.html`
+**E6 · Fiche élève** — `maquettes/Student-profile.dc.html` — fil causal et déblocages livrés (B5) ; aperçu famille en D4
 - Route : `/teacher/[classroomId]/s/[studentId]` (refonte)
 - API : `GET /students/{id}/profile`, `/trajectory`, `/tutor` (existants)
 - Acceptation : chaîne causale en héros (maîtrisé → cause racine → où ça se voit), maîtrise par compétence avec fourchette, historique des déblocages, aperçu du message famille.
@@ -101,7 +101,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 ### Élève
 
-**S1 · Rejoindre** — `maquettes/Student-join.dc.html`
+**S1 · Rejoindre** — `maquettes/Student-join.dc.html` — livré (B5)
 - Route : `/student/join`
 - API : `POST /checkins/join {code, locale?}` → `{session_id, checkin_id}` (crée une `AssessmentSession` liée au check-in ; idempotent : re-rejoindre renvoie la session ouverte) — livré (B1)
 - Acceptation : compte SSO déjà connecté, refus clair si code inconnu, clos, ou si l'élève n'est pas dans la classe.
@@ -111,7 +111,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 - API : `GET /sessions/{id}/next-item`, `POST /sessions/{id}/responses` (existants)
 - Acceptation : pas de minuteur, pas de score, progression en points, bascule AR, maths toujours LTR.
 
-**S3 · Débloqué** — `maquettes/Student-unlocked.dc.html`
+**S3 · Débloqué** — `maquettes/Student-unlocked.dc.html` — livré (B5)
 - Fin de session : compétence débloquée mise en avant (or), puis « en progrès » et « prochaine étape ». Jamais de rouge, jamais de note.
 
 ### Parent
@@ -176,6 +176,8 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 - API : `POST /ops/curricula` (import), `GET/PUT /ops/curricula/{id}/mappings`, `GET /ops/curricula/{id}/coverage`, `POST /ops/curricula/{id}/publish`
 - Point de départ : `scripts/` du crosswalk, `data/crosswalk_fractions_draft.json`, `GET/POST /admin/curriculum`
 - Acceptation : liste des référentiels avec statut brouillon / publié, table compétence ↔ attendu avec alignement et confiance, édition d'une ligne, aperçu du libellé vu par l'école, publication bloquée tant que la couverture n'est pas revue.
+
+**O5 · Éditeur de mini-leçons** (hors spec, décision 2026-10-31) — `/ops/lessons`, `GET/POST /ops/lessons`, `PUT /ops/lessons/{id}` : relecteur et super admin rédigent et éditent les leçons avec la validation des fichiers ; couverture des racines (Q3) affichée.
 
 **O4 · Validation de l'arabe** — `maquettes/Linguist.dc.html`
 - Route : `/linguist` (refonte)

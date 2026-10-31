@@ -17,8 +17,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.audit import log_action
-from src.models.base import LessonOrigin, LessonStatus
-from src.models.competency import Competency
+from src.models.base import EdgeType, LessonOrigin, LessonStatus
+from src.models.competency import Competency, CompetencyPrerequisite
 from src.models.lesson import MiniLesson
 
 LESSONS_DIR = Path(__file__).resolve().parents[2] / "data" / "lessons"
@@ -187,3 +187,52 @@ def activate(s: Session, lesson: MiniLesson, *, by: uuid.UUID) -> MiniLesson:
     s.flush()
     log_action(s, action="lesson.activate", user_id=by, resource_type="mini_lesson", resource_id=lesson.id)
     return lesson
+
+
+# --- éditeur côté Atlas (O5) : la même validation que les fichiers, sans fichier -----------
+
+def coverage(s: Session) -> List[dict]:
+    """Causes racines possibles (prérequis HARD), classées par ce qu'elles débloquent en aval,
+    avec leurs leçons et statuts — ce qui manque saute aux yeux (Q3)."""
+    comps = {c.id: c for c in s.execute(select(Competency)).scalars()}
+    dep: Dict[uuid.UUID, set] = {}
+    for e in s.execute(select(CompetencyPrerequisite).where(CompetencyPrerequisite.edge_type == EdgeType.HARD)).scalars():
+        dep.setdefault(e.source_id, set()).add(e.target_id)
+    lessons: Dict[uuid.UUID, List[MiniLesson]] = {}
+    for l in s.execute(select(MiniLesson)).scalars():
+        lessons.setdefault(l.competency_id, []).append(l)
+
+    def downstream(c, seen=None):
+        seen = seen if seen is not None else set()
+        for t in dep.get(c, ()):
+            if t not in seen:
+                seen.add(t); downstream(t, seen)
+        return seen
+
+    out = []
+    for cid in sorted(dep, key=lambda c: (-len(downstream(c)), comps[c].grade, comps[c].code)):
+        c = comps[cid]
+        ls = sorted(lessons.get(cid, []), key=lambda l: (-_STATUS_RANK[l.status], -l.version))
+        out.append({"competency_id": str(cid), "code": c.code, "label_en": c.label_en, "label_ar": c.label_ar,
+                    "grade": c.grade, "unlocks": len(downstream(cid)),
+                    "lessons": [payload(l, full=False) for l in ls],
+                    "best_status": ls[0].status.value if ls else None})
+    return out
+
+
+def doc_from_payload(data: dict, *, key: Optional[str] = None) -> LessonDoc:
+    """Même forme que les fichiers ; `key` dérivée de la compétence et de la version si absente."""
+    data = dict(data)
+    if key:
+        data["key"] = key
+    elif not data.get("key"):
+        data["key"] = f"{data.get('competency', 'LESSON')}.v{int(data.get('version', 1))}"
+    try:
+        return LessonDoc.model_validate(data)
+    except ValidationError as e:
+        err = e.errors()[0]
+        raise LessonError(f"{'.'.join(str(x) for x in err.get('loc', ()))} : {err.get('msg', e)}")
+
+
+def all_lessons(s: Session) -> List[MiniLesson]:
+    return list(s.execute(select(MiniLesson).order_by(MiniLesson.key)).scalars())

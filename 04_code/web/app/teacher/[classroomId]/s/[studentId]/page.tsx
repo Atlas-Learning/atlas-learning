@@ -11,7 +11,8 @@ import { TutorExplain } from "@/components/TutorExplain";
 import { RestitutionCard } from "@/components/RestitutionCard";
 import { RemediationModal } from "@/components/RemediationModal";
 import { api, type Guardian } from "@/lib/api";
-import type { StudentProfile } from "@/lib/types";
+import type { StudentProfile, UnlockHistory } from "@/lib/types";
+import { CausalThread } from "@/components/CausalThread";
 
 export default function StudentProfilePage({
   params,
@@ -30,9 +31,11 @@ function ProfileView({ classroomId, studentId }: { classroomId: string; studentI
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [remediate, setRemediate] = useState<string | null>(null);
+  const [unlocks, setUnlocks] = useState<UnlockHistory | null>(null);
 
   useEffect(() => {
     api.studentProfile(studentId).then(setProfile).catch((e) => setError(e.message));
+    api.studentUnlocks(studentId).then(setUnlocks).catch(() => setUnlocks(null));
   }, [studentId]);
 
   if (error) return <ErrorPanel detail={error} />;
@@ -72,6 +75,16 @@ function ProfileView({ classroomId, studentId }: { classroomId: string; studentI
         {/* Diagnostic causal — l'écran héros. */}
         <Card className="p-5 lg:col-span-2">
           <SectionTitle title={t("profile.diagnosis.title")} subtitle={t("profile.diagnosis.subtitle")} />
+          {primary && (
+            <div className="mb-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-400">{t("thread.title")}</p>
+              <CausalThread
+                mastered={(() => { const m = profile.competencies.filter((c) => c.mastered).sort((a, b) => b.ability_elo - a.ability_elo)[0]; return m ? (lang === "ar" ? m.label_ar : m.label_en) : null; })()}
+                root={lang === "ar" ? primary.root_cause_label_ar : primary.root_cause_label}
+                shows={primary.is_self ? null : (lang === "ar" ? primary.gap_label_ar : primary.gap_label)}
+              />
+            </div>
+          )}
           {!primary ? (
             <div className="rounded-2xl bg-emerald-50 p-6 text-center">
               <p className="text-lg font-semibold text-emerald-800">{t("profile.nogaps.title")}</p>
@@ -123,6 +136,28 @@ function ProfileView({ classroomId, studentId }: { classroomId: string; studentI
           </div>
         )}
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-5">
+          <SectionTitle title={t("unlocks.title")} />
+          {!unlocks || unlocks.unlocks.length === 0 ? (
+            <p className="text-sm text-sand-400">{t("unlocks.none")}</p>
+          ) : (
+            <ul className="space-y-2">
+              {unlocks.unlocks.map((u, i) => (
+                <li key={i} className="flex items-center justify-between rounded-xl bg-gold-50 px-3 py-2 text-sm ring-1 ring-gold-200">
+                  <span className="font-medium text-gold-800">{lang === "ar" ? u.label_ar : u.label_en}</span>
+                  <span className="num text-xs text-gold-700">{u.unlocked_at?.slice(0, 10)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        <Card className="p-5">
+          <SectionTitle title={t("family.preview")} />
+          <p className="text-sm text-sand-500">{t("family.preview.body")}</p>
+        </Card>
+      </div>
 
       <GuardiansSection studentId={studentId} />
 

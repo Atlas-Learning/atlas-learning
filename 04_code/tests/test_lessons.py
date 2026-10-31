@@ -157,3 +157,43 @@ def test_lesson_read_rbac_and_lifecycle_via_linguist():
         assert again["status"] == "draft"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_ops_editor_creates_updates_and_reports_coverage():
+    client, ids, s = _api()
+    try:
+        from src.models.base import CompetencyStatus, EdgeType, Subject, WeightSource
+        from src.models.competency import Competency, CompetencyPrerequisite
+        # A ← B (HARD) : A est une racine possible
+        root = s.execute(select(Competency).where(Competency.code == "MATH.G3.NF.UNIT_FRACTION")).scalar_one()
+        b = Competency(code="MATH.G3.NF.FRACTION_AS_PART", label_en="Part", label_ar="جزء", subject=Subject.MATH, grade=3,
+                       difficulty_prior=1300.0, status=CompetencyStatus.ACTIVE)
+        s.add(b); s.flush()
+        s.add(CompetencyPrerequisite(source_id=root.id, target_id=b.id, edge_type=EdgeType.HARD,
+                                     correlation_strength=0.8, weight_source=WeightSource.EXPERT))
+        s.add(CompetencyPrerequisite(source_id=b.id, target_id=ids["comp"] if False else b.id, edge_type=EdgeType.HARD,
+                                     correlation_strength=0.8, weight_source=WeightSource.EXPERT)) if False else None
+        s.commit()
+        assert client.get("/ops/lessons", headers=_auth(ids["t"])).status_code == 403
+        lst = client.get("/ops/lessons", headers=_auth(ids["rev"])).json()
+        assert [l["key"] for l in lst["lessons"]] == ["L.v1"]
+        cov = {c["code"]: c for c in lst["coverage"]}
+        assert cov["MATH.G3.NF.UNIT_FRACTION"]["unlocks"] == 1 and cov["MATH.G3.NF.UNIT_FRACTION"]["best_status"] == "draft"
+        assert "MATH.G3.NF.FRACTION_AS_PART" not in cov                      # pas prérequis de quoi que ce soit
+        # création depuis l'UI : clé dérivée, validation de forme, brouillon
+        body = {"competency": "MATH.G3.NF.FRACTION_AS_PART", "title_en": "Parts of a whole", "duration_min": 12,
+                "steps": [{"kind": "warmup", "minutes": 2, "body_en": "w"}, {"kind": "exit", "minutes": 2, "body_en": "e"}]}
+        assert client.post("/ops/lessons", json=body, headers=_auth(ids["ling"])).status_code == 403
+        bad = {**body, "steps": [{"kind": "exit", "minutes": 2, "body_en": "e"}, {"kind": "warmup", "minutes": 2, "body_en": "w"}]}
+        assert client.post("/ops/lessons", json=bad, headers=_auth(ids["rev"])).status_code == 400
+        r = client.post("/ops/lessons", json=body, headers=_auth(ids["rev"]))
+        assert r.status_code == 200 and r.json()["key"] == "MATH.G3.NF.FRACTION_AS_PART.v1" and r.json()["status"] == "draft"
+        lid = r.json()["id"]
+        # édition : le titre change, la clé reste ; une compétence inconnue → 400
+        up = client.put(f"/ops/lessons/{lid}", json={**body, "title_en": "Parts of a whole, v2"}, headers=_auth(ids["su"]))
+        assert up.status_code == 200 and up.json()["title_en"] == "Parts of a whole, v2" and up.json()["key"] == "MATH.G3.NF.FRACTION_AS_PART.v1"
+        assert client.put(f"/ops/lessons/{lid}", json={**body, "competency": "NOPE"}, headers=_auth(ids["su"])).status_code == 400
+        assert client.put(f"/ops/lessons/{uuid.uuid4()}", json=body, headers=_auth(ids["su"])).status_code == 404
+        assert len(client.get("/ops/lessons", headers=_auth(ids["su"])).json()["lessons"]) == 2
+    finally:
+        app.dependency_overrides.clear()

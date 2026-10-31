@@ -29,7 +29,12 @@ tout moment quelles racines ont une leçon, dans quel statut, et lesquelles manq
 
 ## 2. Quoi écrire ?
 
-Un fichier JSON par leçon dans `04_code/data/lessons/`, nommé `<CODE>.v1.json`. Copie
+**Le plus simple : l'éditeur `/ops/lessons`** (compte relecteur ou super admin). Il affiche les
+racines à couvrir, ouvre un formulaire par leçon (titre, 4 étapes, minutes, arabe optionnel) et
+enregistre en `draft` avec la même validation. Les fichiers JSON restent possibles pour un import
+en masse ou une revue en Git.
+
+En fichier : un JSON par leçon dans `04_code/data/lessons/`, nommé `<CODE>.v1.json`. Copie
 `_TEMPLATE.json`, puis remplis en **anglais** :
 
 - `title_en` : ce que l'enseignant lit dans son plan (une ligne).

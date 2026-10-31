@@ -29,6 +29,12 @@ class School(Base):
     # la purge de rétention de TOUS ses élèves tant qu'il est posé (cf. purge_retention).
     legal_hold: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
     legal_hold_reason: Mapped[Optional[str]] = mapped_column(String, default=None)
+    # Refonte B6 (Q5) : message « votre plan est prêt », réglé PAR ÉCOLE. NULL = défaut dérivé du
+    # pays (dimanche en Arabie saoudite, lundi ailleurs ; 7 h ; fuseau du pays, sinon UTC).
+    country: Mapped[Optional[str]] = mapped_column(String(2), default=None)          # ISO 3166-1 alpha-2
+    plan_mail_weekday: Mapped[Optional[int]] = mapped_column(Integer, default=None)  # 0 = lundi … 6 = dimanche
+    plan_mail_hour: Mapped[Optional[int]] = mapped_column(Integer, default=None)     # heure locale 0–23
+    timezone: Mapped[Optional[str]] = mapped_column(String, default=None)            # IANA, ex. Asia/Dubai
 
 
 class Student(Base):

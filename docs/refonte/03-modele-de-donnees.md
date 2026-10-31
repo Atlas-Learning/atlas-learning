@@ -2,7 +2,7 @@
 
 État de départ : migrations jusqu'à `0022_role_content_reviewer`. Les numéros ci-dessous sont indicatifs ; garder une migration par sujet, chacune réversible.
 
-> **Numérotation réelle** (dépôt à 0020 au départ, voir `00-ecarts-depot.md`) : « 0023 » = `0021_role_dept_lead_group_admin` + `0022_classroom_grade_dept_scope` ; « 0024 » = `0023_item_versions_flags` ; le rôle `content_reviewer` = `0024_role_content_reviewer`. « 0025 » = `0025_checkin`, « 0026 » = `0026_weekly_plan`. Puis `0027_response_selected` (hors spec, Q16 : option choisie par l'élève), donc « 0027 » (mini_lesson) = `0028_mini_lesson` ; à partir de là, numéro du spec + 1.
+> **Numérotation réelle** (dépôt à 0020 au départ, voir `00-ecarts-depot.md`) : « 0023 » = `0021_role_dept_lead_group_admin` + `0022_classroom_grade_dept_scope` ; « 0024 » = `0023_item_versions_flags` ; le rôle `content_reviewer` = `0024_role_content_reviewer`. « 0025 » = `0025_checkin`, « 0026 » = `0026_weekly_plan`. Puis `0027_response_selected` (hors spec, Q16 : option choisie par l'élève), donc « 0027 » (mini_lesson) = `0028_mini_lesson` ; `0029_school_plan_mail` (B6, Q5, hors spec) ; donc « 0028 » (department_decision) = `0030`, puis numéro du spec + 2.
 
 Noms de champs en anglais, types SQLAlchemy 2 (`Mapped[...]`), UUID en clé primaire comme le reste du schéma, `school_id` dénormalisé sur toute table élève pour l'isolation tenant et la rétention.
 

@@ -107,3 +107,32 @@ def linguist_login_email(link: str) -> Tuple[str, str, str]:
     )
     text = f"Sign in to Atlas Learning linguist console: {link}"
     return subject, html, text
+
+
+def weekly_plan_email(classes: list, web_base: str) -> Tuple[str, str, str]:
+    """(subject, html, text) — « votre plan est prêt » (refonte B6, écran E1 par e-mail).
+
+    `classes` : [{name, classroom_id, n_actions, because_en, because_ar}] — une ligne par classe
+    de l'enseignant qui a un plan actif. Aucune PII élève : des comptes et la phrase « parce
+    que » de la première action. Bilingue EN / AR, chiffres 0-9."""
+    subject = "Atlas — your plan for the week is ready / خطة أسبوعك جاهزة"
+    rows_en, rows_ar, rows_txt = [], [], []
+    for c in classes:
+        url = f"{web_base}/teacher/{c['classroom_id']}/week"
+        n = c.get("n_actions", 0)
+        rows_en.append(f'<li><b>{c["name"]}</b> — {n} action{"s" if n != 1 else ""}. '
+                       f'{c.get("because_en") or ""} <a href="{url}">Open the plan →</a></li>')
+        rows_ar.append(f'<li><b>{c["name"]}</b> — {n} إجراء. {c.get("because_ar") or ""} '
+                       f'<a href="{url}">افتح الخطة ←</a></li>')
+        rows_txt.append(f"- {c['name']}: {n} action(s). {url}")
+    html = (
+        '<div style="font-family:system-ui,sans-serif;line-height:1.5">'
+        "<p>Your plan for the week is ready: what to re-teach, to whom, and why — in 10 minutes.</p>"
+        f"<ul>{''.join(rows_en)}</ul>"
+        '<p style="color:#888;font-size:13px">Teach the mini-lesson, mark it as taught, run the '
+        "5-minute re-check: the proof appears on its own.</p>"
+        '<hr><div dir="rtl"><p>خطة أسبوعك جاهزة: ما الذي تعيد تدريسه، ولمن، ولماذا — في 10 دقائق.</p>'
+        f"<ul>{''.join(rows_ar)}</ul></div></div>"
+    )
+    text = "Atlas — your plan for the week is ready.\n" + "\n".join(rows_txt)
+    return subject, html, text

@@ -50,6 +50,8 @@ from src.items import review_queue
 from src.api import checkin_service
 from src.api import plan_service
 from src.api import proof_service
+from src.notify import weekly_plan as weekly_plan_mail
+from zoneinfo import ZoneInfo
 from src.api import lesson_service
 from src.models.lesson import MiniLesson
 from src.models.plan import PlanAction, WeeklyPlan
@@ -2282,6 +2284,66 @@ def ops_template_regenerate(key: str, dry_run: bool = False,
         log_action(s, action="item.template_regenerate", user_id=ctx.user_id, details=rep.as_dict())
         s.commit()
     return {**rep.as_dict(), "dry_run": dry_run}
+
+
+# ---------- réglages d'école : message hebdomadaire (refonte B6, Q5) ----------
+
+class SchoolSettingsIn(BaseModel):
+    country: Optional[str] = None             # ISO 3166-1 alpha-2
+    plan_mail_weekday: Optional[int] = None   # 0 = lundi … 6 = dimanche ; None = défaut du pays
+    plan_mail_hour: Optional[int] = None      # heure locale ; None = 7 h
+    timezone: Optional[str] = None            # IANA ; None = fuseau du pays
+
+
+@app.get("/schools/{school_id}/settings")
+def school_settings_ep(school_id: uuid.UUID, ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    sch = _get_live_school(s, school_id)
+    if not can_access_school(ctx, school_id):
+        raise HTTPException(status_code=403, detail="accès refusé à cet établissement")
+    return weekly_plan_mail.settings_payload(sch)
+
+
+@app.patch("/schools/{school_id}/settings")
+def school_settings_patch_ep(school_id: uuid.UUID, body: SchoolSettingsIn,
+                             ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    sch = _get_live_school(s, school_id)
+    if not can_manage_school(ctx, school_id):
+        raise HTTPException(status_code=403, detail="réservé aux admins de l'établissement")
+    data = body.model_dump(exclude_unset=True)
+    if "country" in data and data["country"] is not None:
+        c = data["country"].strip().upper()
+        if len(c) != 2 or not c.isalpha():
+            raise HTTPException(status_code=400, detail="country : code ISO à 2 lettres")
+        data["country"] = c
+    if data.get("plan_mail_weekday") is not None and not 0 <= data["plan_mail_weekday"] <= 6:
+        raise HTTPException(status_code=400, detail="plan_mail_weekday : 0 (lundi) à 6 (dimanche)")
+    if data.get("plan_mail_hour") is not None and not 0 <= data["plan_mail_hour"] <= 23:
+        raise HTTPException(status_code=400, detail="plan_mail_hour : 0 à 23")
+    if data.get("timezone") is not None:
+        try:
+            ZoneInfo(data["timezone"])
+        except Exception:
+            raise HTTPException(status_code=400, detail="timezone : identifiant IANA attendu (ex. Asia/Dubai)")
+    for k, v in data.items():
+        setattr(sch, k, v)
+    log_action(s, action="school.settings", school_id=sch.id, user_id=ctx.user_id, resource_type="school",
+               resource_id=sch.id, details=data)
+    s.commit()
+    return weekly_plan_mail.settings_payload(sch)
+
+
+@app.post("/admin/notify/weekly-plan")
+def admin_notify_weekly_plan(dry_run: bool = True, school_id: Optional[uuid.UUID] = None,
+                             ctx: UserContext = Depends(get_context), s: Session = Depends(get_db),
+                             sender=Depends(get_email_sender)):
+    """Déclenche (ou simule) l'envoi « votre plan est prêt ». Super admin. `school_id` force
+    l'envoi pour une école quelle que soit l'heure (démo, pilote)."""
+    if not is_super(ctx):
+        raise HTTPException(status_code=403, detail="réservé au super admin Atlas")
+    rep = weekly_plan_mail.send_due(s, sender, web_base=_web_base(), dry_run=dry_run, force_school_id=school_id)
+    if not dry_run:
+        s.commit()
+    return {**rep.as_dict(), "dry_run": dry_run, "recipients": rep.sent if dry_run else len(rep.sent)}
 
 
 @app.get("/schools/{school_id}/overview")

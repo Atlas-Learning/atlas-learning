@@ -152,7 +152,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 **I1 · SSO et roster** — `maquettes/IT-sso.dc.html`
 - Route : `/it` (refonte)
 - API : `/admin/integration`, `/admin/rostering/sync`, `/admin/rostering/runs`, `/admin/setup` (existants)
-- Acceptation : 4 étapes (OIDC, source de roster, domaines, accès parents), avertissements de synchronisation actionnables, test de connexion.
+- Acceptation : 4 étapes (OIDC, source de roster, domaines, accès parents), avertissements de synchronisation actionnables, test de connexion. Réglages du message hebdomadaire par école (`GET/PATCH /schools/{id}/settings`, livrés B6) à exposer ici.
 
 **I2 · Données et conformité** — `maquettes/IT-data.dc.html`
 - Route : `/it/data`

@@ -545,6 +545,30 @@ def test_0027_0028_response_selected_and_mini_lesson_reversible():
         os.unlink(tmp.name)
 
 
+def test_0029_school_plan_mail_reversible():
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "head")
+        engine = sa.create_engine(url)
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("school")}
+        assert {"country", "plan_mail_weekday", "plan_mail_hour", "timezone"} <= cols
+        command.downgrade(cfg, "0028_mini_lesson")
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("school")}
+        assert not ({"country", "plan_mail_weekday", "plan_mail_hour", "timezone"} & cols)
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

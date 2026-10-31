@@ -44,6 +44,7 @@ make migrate       # alembic upgrade head (SQLite par défaut, DATABASE_URL pour
 .venv/bin/python scripts/backfill_template_keys.py --dry-run   # Q15 : clés de gabarit sans perte
 .venv/bin/python scripts/regenerate_template.py --key <code|code#rang> [--dry-run]   # A3
 .venv/bin/python scripts/seed_lessons.py [--dry-run]   # B3 : mini-leçons depuis data/lessons/ (contenu humain)
+.venv/bin/python scripts/send_weekly_plan.py [--dry-run] [--now …] [--school …]   # B6 : cron horaire « votre plan est prêt »
 cd web && npm install && npm run dev
 ```
 

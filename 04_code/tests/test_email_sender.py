@@ -104,3 +104,17 @@ def test_smtp_send_uses_starttls_tls12_login_and_multipart(monkeypatch):
     assert msg.is_multipart()
     types = {p.get_content_type() for p in msg.get_payload()}
     assert types == {"text/plain", "text/html"}                  # texte (fallback) + HTML
+
+
+# ---------- refonte B6 : gabarit « votre plan est prêt » ----------
+
+def test_weekly_plan_email_template_is_bilingual_and_links_each_class():
+    from src.notify.templates import weekly_plan_email
+    classes = [{"name": "4B", "classroom_id": "c1", "n_actions": 2, "because_en": "Because X is not mastered yet, 4 students are blocked on Y.",
+                "because_ar": "لأن «س» غير مُتقَن بعد، يتعثّر 4 من الطلاب في «ص»."},
+               {"name": "5A", "classroom_id": "c2", "n_actions": 1, "because_en": "", "because_ar": ""}]
+    subject, html, text = weekly_plan_email(classes, "https://app.atlas")
+    assert "ready" in subject and "جاهزة" in subject
+    assert "https://app.atlas/teacher/c1/week" in html and "https://app.atlas/teacher/c2/week" in html
+    assert "2 actions." in html and "1 action." in html and 'dir="rtl"' in html
+    assert "4B: 2 action(s)" in text and "5A: 1 action(s)" in text

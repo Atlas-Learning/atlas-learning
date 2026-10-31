@@ -166,7 +166,7 @@ def next_item(s: Session, session: AssessmentSession, config: StopConfig = StopC
 def submit_response(
     s: Session, session: AssessmentSession, *, item_id: uuid.UUID,
     is_correct: bool, response_time_ms: Optional[int] = None,
-    config: StopConfig = StopConfig(),
+    config: StopConfig = StopConfig(), selected: Optional[str] = None,
 ) -> dict:
     # Session terminée → refus AVANT tout effet (revue 2026-07-08) : sans cette garde,
     # un client pouvait POSTer des réponses après l'arrêt et bouger l'Elo hors flux.
@@ -184,6 +184,7 @@ def submit_response(
             school_id=session.school_id, session_id=session.id,
             response_time_ms=response_time_ms, response_id=response_id,
             language=session.locale,   # C-0 : la Response porte la langue de SA session
+            selected=selected,         # Q16 : option choisie (analyse des distracteurs)
         )
 
     try:

@@ -43,6 +43,7 @@ def on_response(
     session_id: Optional[uuid.UUID] = None,
     response_id: Optional[uuid.UUID] = None,
     language: ResponseLanguage = ResponseLanguage.EN,
+    selected: Optional[str] = None,
 ) -> Response:
     """Applique une réponse de bout en bout (transaction atomique). Retourne la Response.
 
@@ -139,7 +140,7 @@ def on_response(
         resp = Response(
             id=response_id or uuid.uuid4(),
             school_id=school_id, student_id=student_id, item_id=item_id,
-            competency_id=comp_id, is_correct=is_correct,
+            competency_id=comp_id, is_correct=is_correct, selected=selected,
             response_time_ms=response_time_ms, session_id=session_id,
             language=ResponseLanguage(language),
             created_at=utcnow(),

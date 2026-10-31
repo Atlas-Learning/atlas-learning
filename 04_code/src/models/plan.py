@@ -55,8 +55,11 @@ class PlanAction(Base):
     blocked_competency_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("competency.id", ondelete="RESTRICT")
     )
-    # Mini-leçon (B3, table mini_lesson à venir) : colonne posée, FK ajoutée par la migration B3.
-    lesson_id: Mapped[Optional[uuid.UUID]] = mapped_column(default=None)
+    # Mini-leçon de la racine (B3). FK posée par 0028 (use_alter : la table est créée après).
+    lesson_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("mini_lesson.id", ondelete="SET NULL", use_alter=True, name="fk_plan_action_lesson"),
+        default=None,
+    )
     confidence: Mapped[PlanConfidence] = mapped_column(native_enum(PlanConfidence, "plan_confidence"))
     because_en: Mapped[str] = mapped_column(Text)
     because_ar: Mapped[str] = mapped_column(Text)

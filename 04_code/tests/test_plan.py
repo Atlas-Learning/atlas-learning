@@ -256,6 +256,51 @@ def test_retention_cascades_members_and_export_lists_plans():
         app.dependency_overrides.clear()
 
 
+def test_observed_error_from_checkin_responses_and_lesson_attached():
+    # Q16 : l'erreur observée vient des réponses FAUSSES du check-in sur la compétence bloquée,
+    # option choisie connue ; B3 : la meilleure leçon de la racine est attachée à l'action.
+    from src.api import lesson_service
+    from src.models.checkin import CheckIn
+    from src.models.measurement import Response
+    from src.models.session import AssessmentSession
+    from src.restitution.plan import WrongAnswer, observed_error_text
+    assert observed_error_text([], 3) is None
+    assert observed_error_text([WrongAnswer("What is 1/3 + 1/6?", "2/9")] * 3 + [WrongAnswer("What is 1/2 + 1/4?", "2/6")], 4) == \
+        "What is 1/3 + 1/6? → 2/9 · 4 of 4 items wrong"
+    assert observed_error_text([WrongAnswer("b", "x"), WrongAnswer("a", "x")], 2) == "a → x · 2 of 2 items wrong"   # ex aequo : énoncé min
+
+    client, ids, s = _setup()
+    try:
+        h = _auth(ids["teacher"])
+        lesson, _ = lesson_service.upsert_lesson(s, lesson_service.LessonDoc.model_validate({
+            "key": "M.A.v1", "competency": "M.A", "title_en": "Unit fractions in 10 minutes", "duration_min": 10,
+            "steps": [{"kind": "model", "minutes": 10, "body_en": "..."}]}))
+        s.commit()
+        ci = client.post(f"/classrooms/{ids['cls']}/checkins", json={"kind": "full"}, headers=h).json()
+        # s0 a répondu 2 items de B pendant le check-in, dont 1 faux (option 2) ; s1 rien
+        item_b = s.execute(select(Item).where(Item.competency_id == ids["B"])).scalars().first()
+        item_b2 = Item(competency_id=ids["B"], content_en={"stem": "q2", "options": ["1", "2"], "answer": "1"},
+                       answer_format=AnswerFormat.MCQ, difficulty_prior=1500.0, status=ItemStatus.ACTIVE, ar_validated=True)
+        s.add(item_b2); s.flush()
+        sess = AssessmentSession(student_id=ids["students"][0], school_id=ids["school"], checkin_id=uuid.UUID(ci["id"]))
+        s.add(sess); s.flush()
+        s.add_all([Response(school_id=ids["school"], student_id=ids["students"][0], item_id=item_b.id, competency_id=ids["B"],
+                            is_correct=False, selected="2", session_id=sess.id),
+                   Response(school_id=ids["school"], student_id=ids["students"][0], item_id=item_b2.id, competency_id=ids["B"],
+                            is_correct=True, selected="1", session_id=sess.id)])
+        s.commit()
+        client.post(f"/checkins/{ci['id']}/close", headers=h)
+        act = client.get(f"/classrooms/{ids['cls']}/plan", headers=h).json()["actions"][0]
+        by_id = {m["student_id"]: m for m in act["members"]}
+        assert by_id[str(ids["students"][0])]["observed_error"] == "q → 2 · 1 of 2 items wrong"
+        assert by_id[str(ids["students"][1])]["observed_error"] is None
+        assert act["lesson_id"] == str(lesson.id) and act["lesson"]["title_en"] == "Unit fractions in 10 minutes"
+        assert act["lesson"]["status"] == "draft"
+        assert client.get(f"/plan-actions/{act['id']}", headers=h).json()["lesson"]["key"] == "M.A.v1"
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_week_start_is_iso_monday():
     assert plan_service.week_start_of(date(2026, 11, 5)) == date(2026, 11, 2)     # jeudi → lundi
     assert plan_service.week_start_of(date(2026, 11, 2)) == date(2026, 11, 2)

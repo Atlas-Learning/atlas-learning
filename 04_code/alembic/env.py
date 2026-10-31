@@ -26,6 +26,7 @@ from src.models import org as _org  # noqa: E402,F401  (organization/classroom/u
 from src.models import audit as _audit  # noqa: E402,F401  (audit_log)
 from src.models import checkin as _checkin  # noqa: E402,F401  (checkin, refonte B1)
 from src.models import plan as _plan  # noqa: E402,F401  (weekly_plan, plan_action, proof, refonte B2)
+from src.models import lesson as _lesson  # noqa: E402,F401  (mini_lesson, refonte B3)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_database_url())

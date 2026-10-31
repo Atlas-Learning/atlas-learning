@@ -76,6 +76,9 @@ class Response(Base):
     )
     competency_id: Mapped[uuid.UUID] = mapped_column(index=True)  # dénormalisé (query rapide)
     is_correct: Mapped[bool] = mapped_column(Boolean)
+    # Option choisie par l'élève (refonte B2/Q16) : permet l'analyse des distracteurs
+    # (« 1/3 + 1/6 = 2/9 on 3 of 4 items »). NULL pour les réponses antérieures.
+    selected: Mapped[Optional[str]] = mapped_column(String, default=None)
     response_time_ms: Mapped[Optional[int]] = mapped_column(Integer, default=None)
     session_id: Mapped[Optional[uuid.UUID]] = mapped_column(default=None)  # FK session = Epic 4
     # Langue SERVIE (C-0) : dérivée de la locale de session, 'en' hors session. Le

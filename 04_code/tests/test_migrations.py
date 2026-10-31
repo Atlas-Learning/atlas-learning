@@ -515,6 +515,36 @@ def test_0026_weekly_plan_reversible_and_checkin_fk():
         os.unlink(tmp.name)
 
 
+def test_0027_0028_response_selected_and_mini_lesson_reversible():
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "head")
+        engine = sa.create_engine(url)
+        insp = sa.inspect(engine)
+        assert any(c["name"] == "selected" and c["nullable"] for c in insp.get_columns("response"))
+        assert "mini_lesson" in insp.get_table_names()
+        assert any(f["referred_table"] == "mini_lesson" and f["options"] == {"ondelete": "SET NULL"}
+                   for f in insp.get_foreign_keys("plan_action"))
+        assert any(u["name"] == "uq_mini_lesson_key" for u in insp.get_unique_constraints("mini_lesson"))
+        command.downgrade(cfg, "0026_weekly_plan")
+        insp = sa.inspect(engine)
+        assert "mini_lesson" not in insp.get_table_names()
+        assert not any(c["name"] == "selected" for c in insp.get_columns("response"))
+        assert not any(f["referred_table"] == "mini_lesson" for f in insp.get_foreign_keys("plan_action"))
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

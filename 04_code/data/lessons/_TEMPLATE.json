@@ -1,0 +1,13 @@
+{
+  "competency": "MATH.G4.NF.ADD_SAME_SIMPLIFY",
+  "title_en": "Title shown to the teacher",
+  "title_ar": null,
+  "duration_min": 12,
+  "version": 1,
+  "steps": [
+    {"kind": "warmup", "minutes": 2, "body_en": "One quick question the whole class answers.", "body_ar": null},
+    {"kind": "model", "minutes": 4, "body_en": "Teacher models the move, thinking aloud."},
+    {"kind": "guided", "minutes": 4, "body_en": "Pairs try two items; teacher circulates."},
+    {"kind": "exit", "minutes": 2, "body_en": "One exit question per student.", "items": []}
+  ]
+}

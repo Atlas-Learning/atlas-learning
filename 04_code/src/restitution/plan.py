@@ -76,6 +76,25 @@ def because_sentences(root: str, blocked: str, n: int, labels_en: Dict[str, str]
     return en, ar
 
 
+class WrongAnswer(NamedTuple):
+    stem: str
+    selected: str
+
+
+def observed_error_text(wrong: List[WrongAnswer], n_items: int) -> Optional[str]:
+    """« Erreur observée » d'un membre (Q16) : l'erreur la plus fréquente parmi ses réponses
+    fausses sur la compétence bloquée pendant le check-in, avec le volume. Déterministe (ex
+    aequo : énoncé puis option les plus petits). None sans réponse fausse enregistrée."""
+    if not wrong or n_items <= 0:
+        return None
+    counts: Dict[WrongAnswer, int] = {}
+    for w in wrong:
+        counts[w] = counts.get(w, 0) + 1
+    top = min(counts, key=lambda w: (-counts[w], w.stem, w.selected))
+    n_wrong = len(wrong)
+    return f"{top.stem} → {top.selected} · {n_wrong} of {n_items} items wrong"
+
+
 def build_plan(
     abilities_by_student: Dict[str, Dict[str, Ability]],
     hard_prereqs: Dict[str, List[str]],

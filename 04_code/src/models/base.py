@@ -170,6 +170,18 @@ class ProofOutcome(str, enum.Enum):
     NOT_RECHECKED = "not_rechecked"
 
 
+class LessonStatus(str, enum.Enum):
+    """Mini-leçon (refonte B3) : rédigée (EN), arabe validé par le linguiste, puis servie."""
+    DRAFT = "draft"
+    LINGUIST_VALIDATED = "linguist_validated"
+    ACTIVE = "active"
+
+
+class LessonOrigin(str, enum.Enum):
+    ATLAS = "atlas"
+    SCHOOL = "school"
+
+
 class AnswerFormat(str, enum.Enum):
     MCQ = "MCQ"
     NUMERIC = "NUMERIC"

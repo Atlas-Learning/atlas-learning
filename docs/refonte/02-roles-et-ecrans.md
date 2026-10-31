@@ -66,7 +66,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **E3 · Groupe et mini-leçon** — `maquettes/Group.dc.html`
 - Route : `/teacher/[classroomId]/actions/[actionId]`
-- API : `GET /plan-actions/{id}`, `PATCH /plan-actions/{id}/members` `{add, remove}`, `POST /plan-actions/{id}/dismiss` (livrés B2) ; `POST /plan-actions/{id}/done` (B4), `GET /lessons/{id}` (B3)
+- API : `GET /plan-actions/{id}`, `PATCH /plan-actions/{id}/members` `{add, remove}`, `POST /plan-actions/{id}/dismiss` (livrés B2) ; `GET /lessons/{id}`, `GET /lessons?competency_id=`, `POST /linguist/lessons/{id}/arabic`, `POST /linguist/lessons/{id}/validate`, `POST /lessons/{id}/activate` (livrés B3) ; `POST /plan-actions/{id}/done` (B4)
 - Point de départ : `web/components/DiagnosisBlock.tsx`, `RemediationModal.tsx`, `POST /remediation/preview`
 - Acceptation :
   - liste des élèves avec l'erreur typique observée et l'état de la compétence racine ;

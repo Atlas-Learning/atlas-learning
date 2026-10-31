@@ -79,6 +79,18 @@ def test_ac1_create_session():
     app.dependency_overrides.clear()
 
 
+def test_q16_selected_option_is_recorded():
+    client, engine, ids = _client()
+    sid = _start(client, ids)
+    data = client.get(f"/sessions/{sid}/next-item", headers=_h(ids)).json()
+    r = client.post(f"/sessions/{sid}/responses", json={"item_id": data["item_id"], "selected": "1/4"}, headers=_h(ids))
+    assert r.status_code == 200 and r.json()["was_correct"] is False
+    with _q(engine) as s:
+        resp = s.execute(select(Response).where(Response.session_id == uuid.UUID(sid))).scalar_one()
+        assert resp.selected == "1/4" and resp.is_correct is False
+    app.dependency_overrides.clear()
+
+
 def test_ac2_next_item_excludes_quarantined():
     client, engine, ids = _client()
     sid = _start(client, ids)

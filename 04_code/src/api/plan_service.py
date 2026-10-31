@@ -21,7 +21,10 @@ from src.models.measurement import Response, Student, StudentCompetencyAbility
 from src.models.org import StudentClassroom
 from src.models.plan import PlanAction, PlanActionMember, WeeklyPlan
 from src.models.session import AssessmentSession
-from src.restitution.plan import Ability, build_plan
+from src.models.item import Item
+from src.models.lesson import MiniLesson
+from src.api import lesson_service
+from src.restitution.plan import Ability, WrongAnswer, build_plan, observed_error_text
 
 
 class PlanError(ValueError):
@@ -75,6 +78,30 @@ def unit_codes(s: Session, ci: CheckIn, code_of: Dict[uuid.UUID, str]) -> List[s
     return sorted(code_of.values())
 
 
+def observed_errors(s: Session, ci: CheckIn, student_ids: List[uuid.UUID],
+                    competency_id: uuid.UUID) -> Dict[uuid.UUID, Optional[str]]:
+    """Q16 : par élève, l'erreur la plus fréquente sur `competency_id` pendant CE check-in
+    (réponses des sessions liées au check-in, option choisie connue)."""
+    sess_rows = s.execute(select(AssessmentSession.id, AssessmentSession.student_id)
+                          .where(AssessmentSession.checkin_id == ci.id,
+                                 AssessmentSession.student_id.in_(student_ids))).all()
+    if not sess_rows:
+        return {sid: None for sid in student_ids}
+    student_of = {sess_id: st for sess_id, st in sess_rows}
+    rows = s.execute(
+        select(Response, Item.content_en).join(Item, Item.id == Response.item_id)
+        .where(Response.session_id.in_(list(student_of)), Response.competency_id == competency_id)
+    ).all()
+    n_items: Dict[uuid.UUID, int] = {sid: 0 for sid in student_ids}
+    wrong: Dict[uuid.UUID, List[WrongAnswer]] = {sid: [] for sid in student_ids}
+    for resp, content in rows:
+        sid = student_of[resp.session_id]
+        n_items[sid] += 1
+        if not resp.is_correct and resp.selected:
+            wrong[sid].append(WrongAnswer(str((content or {}).get("stem", "")), resp.selected))
+    return {sid: observed_error_text(wrong[sid], n_items[sid]) for sid in student_ids}
+
+
 def generate_plan_for_checkin(s: Session, ci: CheckIn, *, by: Optional[uuid.UUID] = None,
                               week_start: Optional[date] = None) -> WeeklyPlan:
     """Produit le plan de la semaine à partir de l'état mesuré de la classe. Le plan actif
@@ -103,15 +130,19 @@ def generate_plan_for_checkin(s: Session, ci: CheckIn, *, by: Optional[uuid.UUID
                       source_checkin_id=ci.id, status=PlanStatus.ACTIVE)
     s.add(plan); s.flush()
     for d in drafts:
+        lesson = lesson_service.pick_lesson(s, id_of[d.root_cause])                   # B3
         action = PlanAction(
             plan_id=plan.id, school_id=ci.school_id, kind=PlanActionKind(d.kind), rank=d.rank,
             root_cause_competency_id=id_of[d.root_cause], blocked_competency_id=id_of[d.blocked],
             confidence=PlanConfidence(d.confidence), because_en=d.because_en, because_ar=d.because_ar,
+            lesson_id=lesson.id if lesson else None,
         )
         s.add(action); s.flush()
-        for m in d.members:
-            s.add(PlanActionMember(action_id=action.id, student_id=uuid.UUID(m.student_id),
-                                   school_id=ci.school_id, source=MemberSource.ATLAS))
+        member_ids = [uuid.UUID(m.student_id) for m in d.members]
+        errors = observed_errors(s, ci, member_ids, id_of[d.blocked])            # Q16
+        for sid in member_ids:
+            s.add(PlanActionMember(action_id=action.id, student_id=sid, school_id=ci.school_id,
+                                   source=MemberSource.ATLAS, observed_error=errors.get(sid)))
     s.flush()
     log_action(s, action="plan.generate", school_id=ci.school_id, user_id=by, resource_type="weekly_plan",
                resource_id=plan.id, details={"checkin_id": str(ci.id), "week_start": ws.isoformat(),
@@ -146,6 +177,8 @@ def action_payload(s: Session, a: PlanAction, *, with_members: bool = True) -> d
         "blocked": {"competency_id": str(blocked.id), "code": blocked.code, "label_en": blocked.label_en, "label_ar": blocked.label_ar},
         "because_en": a.because_en, "because_ar": a.because_ar,
         "lesson_id": str(a.lesson_id) if a.lesson_id else None,
+        "lesson": (lesson_service.payload(s.get(MiniLesson, a.lesson_id), full=False)
+                   if a.lesson_id and s.get(MiniLesson, a.lesson_id) else None),
         "n_members": len(active_members),
         "done_at": a.done_at.isoformat() if a.done_at else None,
         "dismissed_at": a.dismissed_at.isoformat() if a.dismissed_at else None,

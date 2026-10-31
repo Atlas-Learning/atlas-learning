@@ -48,6 +48,8 @@ from src.items import templates as item_templates
 from src.items import review_queue
 from src.api import checkin_service
 from src.api import plan_service
+from src.api import lesson_service
+from src.models.lesson import MiniLesson
 from src.models.plan import PlanAction, WeeklyPlan
 from datetime import date
 from src.models.base import CheckInKind
@@ -60,6 +62,7 @@ from src.items.arabic import (
     translate_to_arabic,
 )
 from src.models.base import CurriculumView, ItemFlagReason, ItemFlagStatus, ItemStatus, Role
+from src.models.competency import Competency
 from src.models.item import Item, ItemFlag
 from src.models.measurement import School, Student
 from src.models.audit import AuditLog
@@ -1201,7 +1204,7 @@ def post_response(session_id: uuid.UUID, body: ResponseIn,
     is_correct = grade_answer(item, body.selected, body.lang)   # correction serveur
     try:
         result = submit_response(s, sess, item_id=body.item_id, is_correct=is_correct,
-                                 response_time_ms=body.response_time_ms)
+                                 response_time_ms=body.response_time_ms, selected=body.selected)
         # `was_correct` = correction de la réponse qu'on vient de soumettre (feedback élève) ;
         # le reste du payload décrit l'item SUIVANT.
         return {**result, "was_correct": is_correct}
@@ -1919,6 +1922,84 @@ def plan_action_dismiss_ep(action_id: uuid.UUID, ctx: UserContext = Depends(get_
     plan_service.dismiss(s, a, by=ctx.user_id)
     s.commit()
     return plan_service.action_payload(s, a)
+
+
+# ---------- mini-leçons (refonte B3) ----------
+#
+# Lecture : enseignant, coordinateur, staff Atlas (matrice de docs/refonte/02). Arabe : le
+# linguiste pose et valide. Activation : super admin ou relecteur de contenu.
+
+def _get_lesson(s: Session, lesson_id: uuid.UUID) -> MiniLesson:
+    lesson = s.get(MiniLesson, lesson_id)
+    if lesson is None:
+        raise HTTPException(status_code=404, detail="leçon introuvable")
+    return lesson
+
+
+def _can_read_lessons(ctx: UserContext) -> bool:
+    return ctx.has(Role.TEACHER, Role.DEPT_LEAD, Role.SUPER_ADMIN, Role.CONTENT_REVIEWER, Role.LINGUIST)
+
+
+@app.get("/lessons/{lesson_id}")
+def get_lesson_ep(lesson_id: uuid.UUID, ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not _can_read_lessons(ctx):
+        raise HTTPException(status_code=403, detail="accès refusé")
+    lesson = _get_lesson(s, lesson_id)
+    return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
+
+
+@app.get("/lessons")
+def list_lessons_ep(competency_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                    s: Session = Depends(get_db)):
+    if not _can_read_lessons(ctx):
+        raise HTTPException(status_code=403, detail="accès refusé")
+    comp = s.get(Competency, competency_id)
+    return {"competency_id": str(competency_id),
+            "lessons": [lesson_service.payload(l, comp, full=False) for l in lesson_service.lessons_for(s, competency_id)]}
+
+
+class LessonArabicIn(BaseModel):
+    title_ar: Optional[str] = None
+    bodies_ar: List[Optional[str]]       # une entrée par étape, dans l'ordre
+
+
+@app.post("/linguist/lessons/{lesson_id}/arabic")
+def linguist_lesson_arabic(lesson_id: uuid.UUID, body: LessonArabicIn,
+                           ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    require_linguist(ctx)
+    lesson = _get_lesson(s, lesson_id)
+    try:
+        lesson_service.set_arabic(s, lesson, title_ar=body.title_ar, bodies_ar=body.bodies_ar, by=ctx.user_id)
+    except lesson_service.LessonError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    s.commit()
+    return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
+
+
+@app.post("/linguist/lessons/{lesson_id}/validate")
+def linguist_lesson_validate(lesson_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                             s: Session = Depends(get_db)):
+    require_linguist(ctx)
+    lesson = _get_lesson(s, lesson_id)
+    try:
+        lesson_service.validate_arabic(s, lesson, by=ctx.user_id)
+    except lesson_service.LessonError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    s.commit()
+    return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
+
+
+@app.post("/lessons/{lesson_id}/activate")
+def lesson_activate(lesson_id: uuid.UUID, ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    lesson = _get_lesson(s, lesson_id)
+    try:
+        lesson_service.activate(s, lesson, by=ctx.user_id)
+    except lesson_service.LessonError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    s.commit()
+    return lesson_service.payload(lesson, s.get(Competency, lesson.competency_id))
 
 
 # ---------- file de revue (refonte A4, écran O2) ----------

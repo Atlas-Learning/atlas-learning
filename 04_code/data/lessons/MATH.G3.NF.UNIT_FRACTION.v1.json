@@ -1,0 +1,30 @@
+{
+  "competency": "MATH.G3.NF.UNIT_FRACTION",
+  "title_en": "One part of b: what 1/b really means",
+  "title_ar": null,
+  "duration_min": 12,
+  "version": 1,
+  "steps": [
+    {
+      "kind": "warmup",
+      "minutes": 2,
+      "body_en": "Hold up a paper strip. Fold it into 4 equal parts. Ask: how many parts? Which fraction is ONE part? Collect answers on the board without correcting yet (expect 1/4, but also 4/1 and 1/3)."
+    },
+    {
+      "kind": "model",
+      "minutes": 4,
+      "body_en": "Say it slowly, pointing: 'The whole is cut into 4 EQUAL parts. One part is one FOURTH. We write 1/4: the bottom number counts the equal parts in the whole, the top number counts the parts we take.' Repeat with 3 parts (1/3) and 6 parts (1/6). Each time, point to the denominator first, then the numerator."
+    },
+    {
+      "kind": "guided",
+      "minutes": 4,
+      "body_en": "Pairs: draw a rectangle, cut it into 8 equal parts, shade ONE. Write the fraction. Then cut another into 2 equal parts, shade ONE. Compare: which single part is bigger, 1/8 or 1/2? Circulate and listen for 'bigger bottom number means smaller part'. Pairs that finish: is 1/5 bigger or smaller than 1/4?"
+    },
+    {
+      "kind": "exit",
+      "minutes": 2,
+      "body_en": "On a slip: a circle is cut into 6 equal parts. What fraction is ONE part? Write it and explain the bottom number in one sentence.",
+      "items": []
+    }
+  ]
+}

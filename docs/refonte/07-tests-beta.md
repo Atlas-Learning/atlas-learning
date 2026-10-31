@@ -12,6 +12,7 @@ dérouler d'un bloc lors de la première passe bêta, pas au fil des tickets (d�
 | Textes AR des maquettes `Main-AR` et `Linguist` | `docs/refonte/maquettes/` | Référence de copy, pas de code |
 | Clés i18n ajoutées en phase A (`review.*`, `department.*`, `group.*`, `staff.*`, `curriculum.readonly`) | `web/lib/i18n.ts` | Rédigées sans relecture |
 | E-mail `staff_login_email` (partie arabe) | `src/notify/templates.py` | |
+| Leçon d'exemple `MATH.G3.NF.UNIT_FRACTION.v1` (EN) et toute leçon rédigée | `data/lessons/` | Rédaction humaine (Q4) ; l'arabe se pose dans l'outil linguiste |
 
 ## Vérification en navigateur (EN et AR, RTL)
 

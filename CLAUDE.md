@@ -43,6 +43,7 @@ make migrate       # alembic upgrade head (SQLite par défaut, DATABASE_URL pour
 .venv/bin/python scripts/onboard_staff.py --role content_reviewer --email …   # staff Atlas global
 .venv/bin/python scripts/backfill_template_keys.py --dry-run   # Q15 : clés de gabarit sans perte
 .venv/bin/python scripts/regenerate_template.py --key <code|code#rang> [--dry-run]   # A3
+.venv/bin/python scripts/seed_lessons.py [--dry-run]   # B3 : mini-leçons depuis data/lessons/ (contenu humain)
 cd web && npm install && npm run dev
 ```
 

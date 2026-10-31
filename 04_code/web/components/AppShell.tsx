@@ -42,6 +42,7 @@ function navFor(me: Me): NavItem[] {
     if (org) items.push({ href: `/group/${org.id}`, key: "nav.group" });
   }
   if (r.has("it_admin")) items.push({ href: "/it", key: "nav.security" });
+  if (r.has("content_reviewer") || r.has("super_admin")) items.push({ href: "/ops/review", key: "nav.review" });
   if (r.has("linguist")) items.push({ href: "/linguist", key: "nav.linguist" });
   if (r.has("student") && me.own_student_id) items.push({ href: "/student", key: "nav.session" });
   if (r.has("parent") && me.child_student_ids[0])

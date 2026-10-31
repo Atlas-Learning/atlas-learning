@@ -168,7 +168,7 @@ Chaque écran a sa maquette dans `maquettes/`. « Point de départ » = code exi
 
 **O2 · File de revue** — `maquettes/Admin-review.dc.html` (super admin et relecteur)
 - Route : `/ops/review`
-- API : `GET /ops/review?source=flag|validation|school|arabic`, `POST /ops/templates/{key}/quarantine`, `POST /items/{id}/transition`
+- API : `GET /ops/review?source=flag|validation|school|arabic`, `GET /ops/review/items/{id}`, `POST /ops/templates/{key}/quarantine`, `POST /ops/templates/{key}/regenerate` (super admin), `POST /items/{id}/transition`, `POST /items/{id}/reject`, `POST /items/flags/{id}/resolve` — livrés (A2–A4)
 - Acceptation : une file unique, filtres par source, détail EN/AR côte à côte, regroupement par gabarit, quarantaine en masse, rappel du cycle de statuts. Le relecteur ne voit pas les actions réservées au super admin.
 
 **O3 · Mapping d'un curriculum** — `maquettes/Admin-curriculum.dc.html`

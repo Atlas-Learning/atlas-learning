@@ -20,7 +20,7 @@ Une refonte est en cours. Sa spec complète est dans `docs/refonte/` : commence 
 ## Invariants (ne jamais casser)
 
 1. **Le curriculum n'entre jamais dans `src/engine/`.** Le moteur ne connaît que le graphe de compétences. Les curriculums sont une couche d'affichage (`src/models/curriculum.py`).
-2. **Aucun appel LLM sur des données d'élève au runtime.** La génération d'items est déterministe (`src/items/deterministic.py`). Le tuteur (`src/restitution/tutor.py`) reste déterministe.
+2. **Aucun appel LLM sur des données d'élève au runtime.** La génération d'items est déterministe (`src/items/deterministic.py`, version arabe `src/items/arabic_deterministic.py` : un gabarit arabe par forme d'énoncé, proposé puis validé par le linguiste). Le tuteur (`src/restitution/tutor.py`) reste déterministe.
    Les gabarits vivent dans le code : une faute se corrige dans le générateur, puis `scripts/regenerate_template.py` crée les nouvelles versions (`src/items/templates.py`). Jamais d'édition d'item en base pour contourner le gabarit.
 3. **Mesuré et estimé sont toujours distingués.** Toute réponse d'API qui expose une maîtrise expose aussi `measured` et la confiance. L'UI hachure l'estimé.
 4. **Pas de classement d'enseignants.** Aucun endpoint accessible à `ped_admin` ou `group_admin` ne renvoie de résultat agrégé par enseignant. L'usage (adoption) peut être agrégé par classe ou par école, jamais les résultats.

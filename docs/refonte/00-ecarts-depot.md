@@ -18,13 +18,13 @@ Relevé le 2026-10-31 sur `origin/main` (commit `97773c3`). Le spec de `docs/ref
 | Rôle `content_reviewer` : « Existe » | **Absent** de `Role` (`src/models/base.py`) : 7 rôles (`super_admin`, `it_admin`, `ped_admin`, `teacher`, `parent`, `student`, `linguist`) |
 | Suivre le modèle de `0022_role_content_reviewer` | Le modèle disponible est `0017_role_linguist` (ajout d'une valeur d'enum, no-op SQLite, `ALTER TYPE` Postgres) |
 
-**Tranché le 2026-10-31** (GitHub est à jour, pas de code local en avance) : A1 est livré en deux migrations, `0021_role_dept_lead_group_admin` (enum) et `0022_classroom_grade_dept_scope` (schéma). Les numéros de `03-modele-de-donnees.md` se décalent donc de −1 à partir de là : son « 0024 » (versions et signalements, A2) est `0023_item_versions_flags`, son « 0025 » (check-ins, B1) sera `0024`, etc. Le rôle `content_reviewer` a été créé par `0024_role_content_reviewer` (staff Atlas global, lien magique via `/admin/request-link`, onboarding `scripts/onboard_staff.py`) : il tient la file des signalements et les actions sur les gabarits ; l'écran `/ops/review` reste le ticket A4.
+**Tranché le 2026-10-31** (GitHub est à jour, pas de code local en avance) : A1 est livré en deux migrations, `0021_role_dept_lead_group_admin` (enum) et `0022_classroom_grade_dept_scope` (schéma). Les numéros de `03-modele-de-donnees.md` se décalent donc de −1 à partir de là : son « 0024 » (versions et signalements, A2) est `0023_item_versions_flags`, son « 0025 » (check-ins, B1) sera `0024`, etc. Le rôle `content_reviewer` a été créé par `0024_role_content_reviewer` (staff Atlas global, lien magique via `/admin/request-link`, onboarding `scripts/onboard_staff.py`) : il tient la file des signalements et les actions sur les gabarits ; l'écran `/ops/review` (A4) est en place.
 
 ## Fichiers cités qui n'existent pas
 
 | Fichier | Cité par | Note |
 | --- | --- | --- |
-| `src/items/arabic_deterministic.py` | CLAUDE.md, A3 | La génération AR passe aujourd'hui par `src/items/arabic.py` et `scripts/translate_bank_ar.py` |
+| `src/items/arabic_deterministic.py` | CLAUDE.md, A3 | **Créé le 2026-10-31** : gabarits arabes déterministes (300/300 items couverts), proposition validée par le linguiste ; `scripts/propose_arabic_deterministic.py` pour la banque existante. Le pipeline LLM (`arabic.py`) reste pour les items hors gabarit |
 | `tests/test_rbac_write_scope.py` | CLAUDE.md (invariant 7) | Seul `tests/test_rbac.py` existe |
 | `tests/test_item_flags.py` | A2 | À créer (normal) |
 | `data/crosswalk_fractions_draft.json` | O3 | `data/` ne contient que `referentiel_fractions.json` ; le crosswalk est seedé par `scripts/seed_crosswalk.py` |

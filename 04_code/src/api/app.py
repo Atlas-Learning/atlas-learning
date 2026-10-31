@@ -45,6 +45,7 @@ from src.audit import log_action
 from src.db import active, make_engine
 from src.items import review
 from src.items import templates as item_templates
+from src.items import review_queue
 from src.items.arabic import (
     ALLAM_MODEL,
     TranslationError,
@@ -52,7 +53,7 @@ from src.items.arabic import (
     ar_math_preserved,
     translate_to_arabic,
 )
-from src.models.base import CurriculumView, ItemFlagReason, ItemFlagStatus, Role
+from src.models.base import CurriculumView, ItemFlagReason, ItemFlagStatus, ItemStatus, Role
 from src.models.item import Item, ItemFlag
 from src.models.measurement import School, Student
 from src.models.audit import AuditLog
@@ -1733,6 +1734,99 @@ def resolve_item_flag(flag_id: uuid.UUID, body: ItemFlagResolveIn,
                         "item_status": it.status.value if it else None})
     s.commit()
     return _flag_payload(fl, it)
+
+
+# ---------- file de revue (refonte A4, écran O2) ----------
+#
+# Une file unique, quatre sources (signalements, échecs de validation, items d'école, arabe à
+# valider), regroupée par gabarit. Relecteur de contenu et super admin ; les actions réservées
+# au super admin (activer, réhabiliter, régénérer) ne sont ni listées ni acceptées pour le
+# relecteur. Toute transition passe par review.promote (invariant 6).
+
+def _review_item_or_404(s: Session, item_id: uuid.UUID) -> Item:
+    it = s.get(Item, item_id)
+    if it is None or it.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="item introuvable")
+    return it
+
+
+@app.get("/ops/review")
+def ops_review_queue(source: Optional[str] = None, limit: int = 500,
+                     ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    try:
+        return review_queue.build_queue(s, source=source, ctx=ctx, limit=min(max(limit, 1), 2000))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/ops/review/items/{item_id}")
+def ops_review_item(item_id: uuid.UUID, ctx: UserContext = Depends(get_context),
+                    s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    return review_queue.item_detail(s, _review_item_or_404(s, item_id), ctx)
+
+
+class ItemTransitionIn(BaseModel):
+    target: str                      # human_reviewed | quarantined | active
+    reason: Optional[str] = None
+
+
+@app.post("/items/{item_id}/transition")
+def item_transition(item_id: uuid.UUID, body: ItemTransitionIn,
+                    ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """Fait avancer un item d'un cran par la machine à états. La validation de l'arabe
+    (→ linguist_validated) reste le geste du linguiste (/linguist/items/{id}/validate)."""
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    it = _review_item_or_404(s, item_id)
+    try:
+        target = ItemStatus(body.target)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="statut cible inconnu")
+    action = review_queue.action_for_transition(it, target)
+    if action is None:
+        raise HTTPException(status_code=400, detail=f"{it.status.value} → {target.value} : pas par cette route")
+    if action in review_queue.SUPER_ONLY_ACTIONS and not is_super(ctx):
+        raise HTTPException(status_code=403, detail="réservé au super admin Atlas")
+    before = it.status.value
+    try:
+        if action == "activate":
+            review.promote_to_active(s, it, reviewer=str(ctx.user_id))
+        else:
+            review.promote(s, it, target, reviewer=str(ctx.user_id))
+    except review.InvalidTransition as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if body.reason:
+        prov = dict(it.provenance or {}); prov[f"{action}_reason"] = body.reason.strip()[:300]
+        it.provenance = prov
+    log_action(s, action=f"item.{action}", user_id=ctx.user_id, resource_type="item", resource_id=it.id,
+               details={"from": before, "to": target.value, "reason": body.reason})
+    s.commit()
+    return review_queue.item_detail(s, it, ctx)
+
+
+class ItemRejectIn(BaseModel):
+    reason: str
+
+
+@app.post("/items/{item_id}/reject")
+def item_reject(item_id: uuid.UUID, body: ItemRejectIn,
+                ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    """Rejette un item : soft delete (jamais détruit), raison en provenance."""
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    it = _review_item_or_404(s, item_id)
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="raison requise")
+    review.reject(s, it, reviewer=str(ctx.user_id), reason=reason)
+    log_action(s, action="item.reject", user_id=ctx.user_id, resource_type="item", resource_id=it.id,
+               details={"reason": reason[:200]})
+    s.commit()
+    return {"item_id": str(it.id), "rejected": True, "reason": reason}
 
 
 # ---------- gabarits (refonte A3) : état, quarantaine en masse, régénération ----------

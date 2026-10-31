@@ -13,6 +13,9 @@ import type {
   NextItem,
   RemediationPreview,
   ProofSurfaces,
+  ReviewDetail,
+  ReviewQueue,
+  ReviewSource,
   RoleGrant,
   SchoolOverview,
   TutorExplanation,
@@ -250,6 +253,36 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ reason }),
     }),
+
+  // — File de revue de la banque (refonte A4) : relecteur de contenu, super admin —
+  opsReview: (source?: ReviewSource) =>
+    request<ReviewQueue>(`/ops/review${source ? `?source=${source}` : ""}`),
+  opsReviewItem: (itemId: string) => request<ReviewDetail>(`/ops/review/items/${itemId}`),
+  itemTransition: (itemId: string, target: "human_reviewed" | "quarantined" | "active", reason?: string) =>
+    request<ReviewDetail>(`/items/${itemId}/transition`, {
+      method: "POST",
+      body: JSON.stringify({ target, reason }),
+    }),
+  itemReject: (itemId: string, reason: string) =>
+    request<{ item_id: string; rejected: boolean }>(`/items/${itemId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  itemFlagResolve: (flagId: string, accept: boolean) =>
+    request<unknown>(`/items/flags/${flagId}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ accept }),
+    }),
+  opsTemplateQuarantine: (key: string, reason?: string) =>
+    request<{ key: string; quarantined: string[] }>(`/ops/templates/${encodeURIComponent(key)}/quarantine`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  opsTemplateRegenerate: (key: string, dryRun: boolean) =>
+    request<{ regenerated: { template_key: string; from_version: number; to_version: number }[]; created: string[]; unchanged: string[]; dry_run: boolean }>(
+      `/ops/templates/${encodeURIComponent(key)}/regenerate?dry_run=${dryRun ? "true" : "false"}`,
+      { method: "POST" },
+    ),
 
   // — Session élève —
   startSession: (student_id: string) =>

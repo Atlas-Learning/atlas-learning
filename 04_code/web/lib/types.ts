@@ -13,6 +13,73 @@ export interface Me {
   own_student_id: string | null;
 }
 
+// File de revue de la banque (refonte A4, écran O2) — /ops/review.
+export type ReviewSource = "flag" | "validation" | "school" | "arabic";
+export type ReviewAction =
+  | "approve" | "quarantine" | "reject" | "resolve_flag" | "quarantine_template"
+  | "activate" | "rehabilitate" | "regenerate";
+
+export interface ReviewEntry {
+  item_id: string;
+  competency_id: string;
+  competency_code: string | null;
+  status: string;
+  origin: "atlas_template" | "school";
+  version: number;
+  template_key: string | null;
+  template: string | null;
+  owner_school_id: string | null;
+  stem_en: string | null;
+  stem_ar: string | null;
+  ar_validated: boolean;
+  n_responses: number;
+  sources: ReviewSource[];
+  open_flags: number;
+  flag_reasons: string[];
+  flag_schools: number;
+  validation_errors: string[];
+  created_at: string | null;
+  actions: ReviewAction[];
+}
+
+export interface ReviewGroup {
+  template: string | null;
+  competency_code: string | null;
+  items: ReviewEntry[];
+  n_items: number;
+  n_active: number;
+  open_flags: number;
+  sources: ReviewSource[];
+}
+
+export interface ReviewQueue {
+  source: ReviewSource | "all";
+  counts: Record<ReviewSource | "all", number>;
+  groups: ReviewGroup[];
+  n_items: number;
+}
+
+export interface ReviewFlag {
+  id: string;
+  reason: string;
+  comment: string | null;
+  status: "open" | "accepted" | "rejected";
+  school_id: string | null;
+  created_at: string | null;
+}
+
+export interface ReviewDetail extends ReviewEntry {
+  content_en: { stem?: string; options?: string[]; answer?: string; [k: string]: unknown };
+  content_ar: { stem?: string; options?: string[]; answer?: string; [k: string]: unknown } | null;
+  difficulty_prior: number;
+  difficulty_elo: number;
+  calibration_reset_at: string | null;
+  provenance: Record<string, unknown>;
+  flags: ReviewFlag[];
+  versions: { item_id: string; version: number; status: string; deleted: boolean; n_responses: number }[];
+  lifecycle: string[];
+}
+
 // Attribution d'un rôle hors roster (dept_lead, group_admin) — /admin/roles.
 export interface RoleGrant {
   membership_id: string;

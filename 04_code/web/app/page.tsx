@@ -15,6 +15,7 @@ function landingFor(me: Me): string {
   if (r.has("dept_lead") && me.department_scopes[0]) return `/department/${me.department_scopes[0].school_id}`;
   if (r.has("group_admin") && me.organizations[0]) return `/group/${me.organizations[0].id}`;
   if (r.has("it_admin")) return "/it";
+  if (r.has("content_reviewer") || r.has("super_admin")) return "/ops/review"; // staff Atlas global (banque)
   if (r.has("linguist")) return "/linguist"; // staff Atlas global (relecture AR)
   if (r.has("student") && me.own_student_id) return "/student";
   if (r.has("parent") && me.child_student_ids[0]) return `/parent/${me.child_student_ids[0]}`;

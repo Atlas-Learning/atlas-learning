@@ -522,6 +522,8 @@ export interface CurriculumSettings {
   organization: { id: string; name: string };
   curriculum_view: string;
   available_frameworks: string[];
+  // Refonte C1 : les frameworks viennent de la table (noms EN/AR) ; ATLAS = vue neutre.
+  frameworks?: { key: string; name_en: string; name_ar: string; country?: string | null }[];
 }
 
 export interface RemediationPreview {

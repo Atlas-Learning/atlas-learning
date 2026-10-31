@@ -2,7 +2,7 @@
 
 État de départ : migrations jusqu'à `0022_role_content_reviewer`. Les numéros ci-dessous sont indicatifs ; garder une migration par sujet, chacune réversible.
 
-> **Numérotation réelle** (dépôt à 0020 au départ, voir `00-ecarts-depot.md`) : « 0023 » = `0021_role_dept_lead_group_admin` + `0022_classroom_grade_dept_scope` ; « 0024 » = `0023_item_versions_flags` ; le rôle `content_reviewer` = `0024_role_content_reviewer`. « 0025 » = `0025_checkin`, « 0026 » = `0026_weekly_plan`. Puis `0027_response_selected` (hors spec, Q16 : option choisie par l'élève), donc « 0027 » (mini_lesson) = `0028_mini_lesson` ; `0029_school_plan_mail` (B6, Q5, hors spec) ; donc « 0028 » (department_decision) = `0030`, puis numéro du spec + 2.
+> **Numérotation réelle** (dépôt à 0020 au départ, voir `00-ecarts-depot.md`) : « 0023 » = `0021_role_dept_lead_group_admin` + `0022_classroom_grade_dept_scope` ; « 0024 » = `0023_item_versions_flags` ; le rôle `content_reviewer` = `0024_role_content_reviewer`. « 0025 » = `0025_checkin`, « 0026 » = `0026_weekly_plan`. Puis `0027_response_selected` (hors spec, Q16 : option choisie par l'élève), donc « 0027 » (mini_lesson) = `0028_mini_lesson` ; `0029_school_plan_mail` (B6, Q5, hors spec) ; donc « 0029 » (curriculums dynamiques, C1) = `0030_curriculum_framework_table` ; « 0028 » (department_decision, D1) et « 0030 » (items d'école, E1) suivront dans l'ordre des tickets.
 
 Noms de champs en anglais, types SQLAlchemy 2 (`Mapped[...]`), UUID en clé primaire comme le reste du schéma, `school_id` dénormalisé sur toute table élève pour l'isolation tenant et la rétention.
 
@@ -91,7 +91,7 @@ Aujourd'hui `CurriculumFramework` et `CurriculumView` sont des enums figés (`CC
 `curriculum_framework` : `id`, `key` (unique, ex. `UK_NC`), `name_en`, `name_ar`, `country` nullable, `status` (`draft` \| `published`), `imported_at`, `published_at`, `source_note`.
 
 Migration :
-1. Créer la table et y insérer les 3 frameworks existants (statut `draft`, comme le crosswalk actuel).
+1. Créer la table et y insérer les 3 frameworks existants. **Livré (0030) avec le statut `published`**, pas `draft` : ils étaient servis aux écoles avant C1 et un brouillon ne sera plus servi (C2) ; `source_note` le dit. Identifiants stables (`legacy_framework_id`).
 2. `curriculum_standard.framework` (enum) → `framework_id` (FK). Recopier les valeurs.
 3. `organization.curriculum_view` (enum) → `curriculum_framework_id` nullable. Nul = vue neutre `ATLAS`, comportement actuel conservé.
 4. Downgrade : chemin inverse vers les enums, refusé si un framework hors des 3 historiques existe.

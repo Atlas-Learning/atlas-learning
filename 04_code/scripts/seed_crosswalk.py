@@ -46,7 +46,7 @@ from src.models.base import (
     WeightSource,
 )
 from src.models.competency import Competency
-from src.models.curriculum import CompetencyCurriculumMap, CurriculumStandard
+from src.models.curriculum import CompetencyCurriculumMap, CurriculumStandard, ensure_legacy_frameworks
 
 
 class CrosswalkSeedError(Exception):
@@ -145,18 +145,21 @@ def seed(session: Session, pivot: dict | None = None) -> dict:
     # VRAI upsert (revue 2026-07-12, CRIT-2) : une clé existante est MISE À JOUR, pas
     # ignorée — sinon une correction du pivot (confirmation experte, Lot 1) ne serait
     # jamais propagée en base, silencieusement.
+    # refonte C1 : les frameworks sont des lignes (publiées) ; clé = (framework_id, code)
+    fw_by_key = ensure_legacy_frameworks(session)
+    fw_id = {CurriculumFramework(k): fw.id for k, fw in fw_by_key.items()}
     existing_std = {
-        (s.framework, s.code): s
+        (s.framework_id, s.code): s
         for s in session.execute(select(CurriculumStandard)).scalars()
     }
     s_created = s_updated = 0
     defs = _standard_defs(pivot)
     for (framework, code), attrs in defs.items():
-        std = existing_std.get((framework, code))
+        std = existing_std.get((fw_id[framework], code))
         if std is None:
-            std = CurriculumStandard(framework=framework, code=code, **attrs)
+            std = CurriculumStandard(framework_id=fw_id[framework], code=code, **attrs)
             session.add(std)
-            existing_std[(framework, code)] = std
+            existing_std[(fw_id[framework], code)] = std
             s_created += 1
         elif any(getattr(std, k) != v for k, v in attrs.items()):
             for k, v in attrs.items():
@@ -173,7 +176,7 @@ def seed(session: Session, pivot: dict | None = None) -> dict:
     m_created = m_updated = 0
     map_rows = _map_defs(pivot)
     for comp_code, framework, std_code, alignment, confidence, note, enrich_kind in map_rows:
-        key = (comp_by_code[comp_code], existing_std[(framework, std_code)].id)
+        key = (comp_by_code[comp_code], existing_std[(fw_id[framework], std_code)].id)
         mm = existing_maps.get(key)
         if mm is None:
             mm = CompetencyCurriculumMap(

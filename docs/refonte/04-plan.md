@@ -79,7 +79,7 @@ Format : **Objectif** · **Fichiers** · **Fait quand** · **Tests**.
 **C1 · Frameworks en table**
 - Objectif : migration 0029 (voir `03`), sans régression sur les 3 frameworks existants.
 - Fichiers : `src/models/base.py`, `src/models/curriculum.py`, `src/models/org.py`, `alembic/versions/0029_*`, tous les usages de `CurriculumFramework` et `CurriculumView`.
-- Tests : `tests/test_curriculum_views.py`, `tests/test_crosswalk_pipeline.py`, aller-retour de migration avec données.
+- Tests : `tests/test_curriculum_views.py`, `tests/test_crosswalk_pipeline.py`, aller-retour de migration avec données. **Livré** : `0030_curriculum_framework_table` (copie des données, downgrade refusé si un framework importé existe), `CurriculumFrameworkDef`, `school_framework()` (un framework non publié = vue ATLAS), `suggested` jamais servi, console `/admin/curriculum` sur la table.
 
 **C2 · Import, mapping, couverture, publication**
 - Objectif : API `/ops/curricula/*` (voir écran O3).

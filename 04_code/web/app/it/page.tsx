@@ -44,13 +44,20 @@ const STATUS_KEY: Record<string, DictKey> = {
   blocked: "it.status.blocked",
 };
 
-// Libellés des frameworks (B3) — les valeurs viennent de l'enum serveur CurriculumView.
+// Libellés des frameworks : noms servis par la table (refonte C1), repli sur les clés
+// historiques traduites pour les anciens payloads.
 const FRAMEWORK_KEY: Record<string, DictKey> = {
   ATLAS: "curriculum.fw.atlas",
   CCSS_M: "curriculum.fw.ccssm",
   UK_NC: "curriculum.fw.uknc",
   MOE_UAE: "curriculum.fw.moe",
 };
+
+function frameworkName(cur: CurriculumSettings, key: string, lang: string, t: (k: DictKey) => string): string {
+  const fw = cur.frameworks?.find((f) => f.key === key);
+  if (fw) return lang === "ar" ? fw.name_ar : fw.name_en;
+  return FRAMEWORK_KEY[key] ? t(FRAMEWORK_KEY[key]) : key;
+}
 
 function ITView() {
   const { t, lang } = useLang();
@@ -247,8 +254,7 @@ function ITView() {
           <div className="mb-1 flex items-center justify-between gap-4">
             <SectionTitle title={t("curriculum.title")} />
             <Chip className="shrink-0 bg-brand-50 text-brand-700 ring-brand-200">
-              {t("curriculum.current")} ·{" "}
-              {t(FRAMEWORK_KEY[curriculum.curriculum_view] ?? "curriculum.fw.atlas")}
+              {t("curriculum.current")} · {frameworkName(curriculum, curriculum.curriculum_view, lang, t)}
             </Chip>
           </div>
           <p className="mb-3 text-xs text-sand-500">
@@ -266,7 +272,7 @@ function ITView() {
           >
             {curriculum.available_frameworks.map((fw) => (
               <option key={fw} value={fw}>
-                {t(FRAMEWORK_KEY[fw] ?? "curriculum.fw.atlas")}
+                {frameworkName(curriculum, fw, lang, t)}
               </option>
             ))}
           </select>

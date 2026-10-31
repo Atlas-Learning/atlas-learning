@@ -30,7 +30,9 @@ from src.models.base import (
     utcnow,
 )
 from src.models.competency import Competency, CompetencyPrerequisite
-from src.models.curriculum import CompetencyCurriculumMap, CurriculumStandard
+from src.models.curriculum import (
+    CompetencyCurriculumMap, CurriculumStandard, ensure_legacy_frameworks, legacy_framework_id,
+)
 from src.models.measurement import School, Student, StudentCompetencyAbility
 from src.models.org import AppUser, Classroom, Membership, Organization, ParentStudent, TeacherClassroom
 from src.rbac.auth import make_token
@@ -48,7 +50,7 @@ def _ability(student_id, comp_id, school_id, elo):
 
 
 def _std(framework, code):
-    return CurriculumStandard(framework=framework, code=code,
+    return CurriculumStandard(framework_id=legacy_framework_id(framework.value), code=code,
                               label_en=f"label {code}", label_ar=f"ar {code}", grade_hint="G4")
 
 
@@ -65,7 +67,8 @@ def _setup():
     Base.metadata.create_all(engine)
     s = Session(bind=engine)
 
-    o = Organization(name="Org")  # curriculum_view = ATLAS (défaut)
+    ensure_legacy_frameworks(s)   # refonte C1 : frameworks en table (publiés)
+    o = Organization(name="Org")  # curriculum_framework_id = NULL → vue ATLAS (défaut)
     s.add(o); s.flush()
     sa_ = School(name="A", organization_id=o.id); s.add(sa_); s.flush()
     c1 = Classroom(school_id=sa_.id, name="4A"); s.add(c1); s.flush()
@@ -131,7 +134,8 @@ def _auth(uid):
 
 
 def _set_view(s, org_id, view):
-    s.get(Organization, org_id).curriculum_view = view
+    s.get(Organization, org_id).curriculum_framework_id = (
+        None if view == CurriculumView.ATLAS else legacy_framework_id(view.value))
     s.commit()
 
 
@@ -168,7 +172,7 @@ def test_admin_curriculum_set_view_is_super_admin_only():
     for uid in (ids["it_admin"], ids["ped_admin"]):
         r = client.post("/admin/curriculum", json={"curriculum_view": "CCSS_M"}, headers=_auth(uid))
         assert r.status_code == 403
-    assert s.get(Organization, ids["org"]).curriculum_view == CurriculumView.ATLAS  # inchangé
+    assert s.get(Organization, ids["org"]).curriculum_framework_id is None  # inchangé
 
 
 def test_admin_curriculum_set_view_persists_and_audits():
@@ -179,7 +183,7 @@ def test_admin_curriculum_set_view_persists_and_audits():
     r = client.post(f"/admin/curriculum?organization_id={ids['org']}",
                     json={"curriculum_view": "CCSS_M"}, headers=_auth(ids["super_admin"]))
     assert r.status_code == 200 and r.json()["curriculum_view"] == "CCSS_M"
-    assert s.get(Organization, ids["org"]).curriculum_view == CurriculumView.CCSS_M
+    assert s.get(Organization, ids["org"]).curriculum_framework_id == legacy_framework_id("CCSS_M")
     entries = s.execute(select(AuditLog).where(AuditLog.action == "curriculum.set_view")).scalars().all()
     assert len(entries) == 1
     assert entries[0].user_id == ids["super_admin"]
@@ -192,7 +196,7 @@ def test_admin_curriculum_rejects_unknown_framework():
     r = client.post(f"/admin/curriculum?organization_id={ids['org']}",
                     json={"curriculum_view": "IB_PYP"}, headers=_auth(ids["super_admin"]))
     assert r.status_code == 400
-    assert s.get(Organization, ids["org"]).curriculum_view == CurriculumView.ATLAS  # inchangé
+    assert s.get(Organization, ids["org"]).curriculum_framework_id is None  # inchangé
     _teardown()
 
 
@@ -360,9 +364,11 @@ def test_coverage_moe_view_has_no_covered_verdict():
     # colonne toujours fausse). display_code null (jamais de pseudo-code affiché).
     client, ids, s = _setup()
     # mappe une compétence maîtrisée (A) sur un standard MoE composé, type BROADER
-    from src.models.curriculum import CompetencyCurriculumMap, CurriculumStandard
+    from src.models.curriculum import (
+    CompetencyCurriculumMap, CurriculumStandard, ensure_legacy_frameworks, legacy_framework_id,
+)
     from src.models.competency import Competency
-    moe = CurriculumStandard(framework=CurriculumFramework.MOE_UAE, code="NUM_OPS.G4",
+    moe = CurriculumStandard(framework_id=legacy_framework_id("MOE_UAE"), code="NUM_OPS.G4",
                              label_en="Numbers & Operations — Cycle 1 (G4)",
                              label_ar="الأعداد والعمليات", grade_hint="G4")
     s.add(moe); s.flush()

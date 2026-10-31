@@ -17,15 +17,14 @@ from sqlalchemy.orm import Session
 from src.items.quarantine import active_pool
 from src.models.base import (
     AlignmentType,
-    CurriculumFramework,
-    CurriculumView,
+    FrameworkStatus,
     EdgeType,
     MappingConfidence,
     ensure_utc,
     utcnow,
 )
 from src.models.competency import Competency, CompetencyPrerequisite
-from src.models.curriculum import CompetencyCurriculumMap, CurriculumStandard
+from src.models.curriculum import CompetencyCurriculumMap, CurriculumFrameworkDef, CurriculumStandard
 from src.models.item import Item
 from src.models.measurement import Response, School, Student, StudentCompetencyAbility
 from src.models.org import Classroom, Organization, StudentClassroom
@@ -103,20 +102,34 @@ _ALIGNMENT_SPECIFICITY = {
 _UNRESOLVED = object()
 
 
-def curriculum_view_of_school(s: Session, school_id) -> CurriculumView:
-    """Framework d'affichage du tenant propriétaire de l'école (B3).
+MOE_KEY = "MOE_UAE"   # framework sans codes officiels : jamais de code affiché
 
-    ATLAS (vue neutre) si l'école est orpheline d'organisation (état legacy des
-    tests/fixtures) : on ne devine jamais un curriculum."""
+
+def school_framework(s: Session, school_id) -> Optional[CurriculumFrameworkDef]:
+    """Framework d'affichage du tenant propriétaire de l'école (B3 ; refonte C1 : table).
+
+    None = vue neutre ATLAS : école orpheline d'organisation (fixtures legacy), organisation
+    sans framework, ou framework non publié — on ne devine jamais un curriculum."""
     school = s.get(School, school_id) if school_id is not None else None
     if school is None or school.organization_id is None:
-        return CurriculumView.ATLAS
+        return None
     org = s.get(Organization, school.organization_id)
-    return org.curriculum_view if org is not None else CurriculumView.ATLAS
+    if org is None or org.curriculum_framework_id is None:
+        return None
+    fw = s.get(CurriculumFrameworkDef, org.curriculum_framework_id)
+    if fw is None or fw.status != FrameworkStatus.PUBLISHED:
+        return None
+    return fw
+
+
+def curriculum_view_of_school(s: Session, school_id) -> str:
+    """Clé du framework affiché, ou "ATLAS" (compatibilité des payloads)."""
+    fw = school_framework(s, school_id)
+    return fw.key if fw is not None else "ATLAS"
 
 
 def _standard_payload(m: CompetencyCurriculumMap, std: CurriculumStandard) -> dict:
-    is_moe = std.framework == CurriculumFramework.MOE_UAE
+    is_moe = std.framework_key == MOE_KEY
     if is_moe:
         # jamais de code affiché ; wording nomme le domaine, pas la clé technique
         wording_en = _MOE_WORDING_EN.format(label=std.label_en)
@@ -132,7 +145,7 @@ def _standard_payload(m: CompetencyCurriculumMap, std: CurriculumStandard) -> di
         wording_en += _INDICATIVE_SUFFIX_EN
         wording_ar += _INDICATIVE_SUFFIX_AR
     return {
-        "framework": std.framework.value,
+        "framework": std.framework_key,
         "code": std.code,               # clé technique (identité), jamais garantie affichable
         "display_code": None if is_moe else std.code,  # ce que l'UI a le droit d'afficher en code
         "label_en": std.label_en,
@@ -143,7 +156,7 @@ def _standard_payload(m: CompetencyCurriculumMap, std: CurriculumStandard) -> di
     }
 
 
-def _crosswalk_by_code(s: Session, framework: CurriculumFramework) -> dict:
+def _crosswalk_by_code(s: Session, framework: CurriculumFrameworkDef) -> dict:
     """competency_code -> [payloads standard], du plus spécifique au moins spécifique.
 
     UN chargement par appel de vue (volumes triviaux : 32 compétences) — les vues
@@ -152,7 +165,8 @@ def _crosswalk_by_code(s: Session, framework: CurriculumFramework) -> dict:
         select(Competency.code, CompetencyCurriculumMap, CurriculumStandard)
         .join(CompetencyCurriculumMap, CompetencyCurriculumMap.competency_id == Competency.id)
         .join(CurriculumStandard, CurriculumStandard.id == CompetencyCurriculumMap.standard_id)
-        .where(CurriculumStandard.framework == framework)
+        .where(CurriculumStandard.framework_id == framework.id,
+               CompetencyCurriculumMap.suggested.is_(False))      # C1 : une ligne suggérée n'est jamais servie
     ).all()
     grouped: dict = {}
     for code, m, std in rows:
@@ -166,10 +180,10 @@ def _crosswalk_by_code(s: Session, framework: CurriculumFramework) -> dict:
 
 def _curriculum_context(s: Session, school_id) -> Optional[dict]:
     """None = vue ATLAS (payloads strictement inchangés) ; sinon crosswalk du framework."""
-    view = curriculum_view_of_school(s, school_id)
-    if view == CurriculumView.ATLAS:
+    fw = school_framework(s, school_id)
+    if fw is None:
         return None
-    return _crosswalk_by_code(s, CurriculumFramework(view.value))
+    return _crosswalk_by_code(s, fw)
 
 
 def _classroom_curriculum(s: Session, classroom_id) -> Optional[dict]:
@@ -421,10 +435,9 @@ def curriculum_coverage(s: Session, school_id: uuid.UUID) -> Optional[dict]:
     au niveau élève individuel en v1 : le standard-setting appartient au Lot C.
     Agrégation en lecture (volumes triviaux, 32 compétences).
     """
-    view = curriculum_view_of_school(s, school_id)
-    if view == CurriculumView.ATLAS:
+    framework = school_framework(s, school_id)
+    if framework is None:
         return None
-    framework = CurriculumFramework(view.value)
 
     # taux de maîtrise PAR ÉLÈVE et par compétence — mêmes filtres que school_overview
     rows = [r for r in s.execute(
@@ -447,13 +460,14 @@ def curriculum_coverage(s: Session, school_id: uuid.UUID) -> Optional[dict]:
     maps = s.execute(
         select(CompetencyCurriculumMap, CurriculumStandard)
         .join(CurriculumStandard, CurriculumStandard.id == CompetencyCurriculumMap.standard_id)
-        .where(CurriculumStandard.framework == framework)
+        .where(CurriculumStandard.framework_id == framework.id,
+               CompetencyCurriculumMap.suggested.is_(False))
     ).all()
     by_std: dict = {}
     for m, std in maps:
         by_std.setdefault(std.id, (std, []))[1].append(m)
 
-    has_exact = framework != CurriculumFramework.MOE_UAE
+    has_exact = framework.key != MOE_KEY
     standards = []
     for std, ms in by_std.values():
         mastered = [bool(comp_mastered.get(m.competency_id, False)) for m in ms]
@@ -461,7 +475,7 @@ def curriculum_coverage(s: Session, school_id: uuid.UUID) -> Optional[dict]:
                           if m.alignment_type == AlignmentType.EXACT]
         standards.append({
             "code": std.code,
-            "display_code": None if std.framework == CurriculumFramework.MOE_UAE else std.code,
+            "display_code": None if std.framework_key == MOE_KEY else std.code,
             "label": std.label_en,
             "label_ar": std.label_ar,
             "mastered_count": sum(mastered),
@@ -471,7 +485,7 @@ def curriculum_coverage(s: Session, school_id: uuid.UUID) -> Optional[dict]:
         })
     standards.sort(key=lambda x: x["code"])
     return {
-        "framework": framework.value,
+        "framework": framework.key,
         "shows_covered": has_exact,
         "coverage_threshold": COHORT_MASTERY_THRESHOLD,
         "standards": standards,

@@ -214,7 +214,16 @@ class Role(str, enum.Enum):
 
 # --- Enums curriculum (Lot B, B2/B3 — DataModel §7 amendé D-B4) ---
 
+class FrameworkStatus(str, enum.Enum):
+    """Framework de curriculum (refonte C1) : importé (brouillon) → publié (visible des écoles)."""
+    DRAFT = "draft"
+    PUBLISHED = "published"
+
+
 class CurriculumFramework(str, enum.Enum):
+    """CLÉS HISTORIQUES des trois frameworks livrés avec le crosswalk (refonte C1 : les
+    frameworks vivent désormais dans la table `curriculum_framework`, cet enum n'est plus un
+    type de colonne — il sert aux seeds, aux tests et à la migration)."""
     CCSS_M = "CCSS_M"     # Common Core State Standards - Mathematics
     UK_NC = "UK_NC"       # UK National Curriculum
     MOE_UAE = "MOE_UAE"   # MoE UAE — pas de codes officiels : clé composée domaine+band
@@ -236,8 +245,9 @@ class MappingConfidence(str, enum.Enum):
 
 
 class CurriculumView(str, enum.Enum):
-    """Framework d'affichage par tenant (B3). ATLAS = vue neutre actuelle (aucune
-    étiquette de standard) — comportement identique à aujourd'hui, zéro régression."""
+    """Vue curriculaire d'un tenant (B3) : ATLAS = vue neutre (aucune étiquette), sinon la clé
+    d'un framework. Refonte C1 : `Organization.curriculum_framework_id` (FK nullable) remplace la
+    colonne enum ; cet enum reste la liste des clés historiques (tests, migration)."""
     ATLAS = "ATLAS"
     CCSS_M = "CCSS_M"
     UK_NC = "UK_NC"

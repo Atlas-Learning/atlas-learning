@@ -232,7 +232,7 @@ def test_0019_schema_from_scratch_coherent_avec_les_modeles():
         # contraintes structurantes des tables 0019 (crosswalk B2)
         uqs = insp.get_unique_constraints("curriculum_standard")
         assert any(u["name"] == "uq_curriculum_standard_framework_code"
-                   and u["column_names"] == ["framework", "code"] for u in uqs)
+                   and u["column_names"] == ["framework_id", "code"] for u in uqs)   # refonte C1
         assert insp.get_pk_constraint("competency_curriculum_map")["constrained_columns"] == [
             "competency_id", "standard_id"]
         assert any(ix["name"] == "ix_ccm_standard" and ix["column_names"] == ["standard_id"]
@@ -240,7 +240,8 @@ def test_0019_schema_from_scratch_coherent_avec_les_modeles():
         fks = {f["referred_table"]: f["options"] for f in
                insp.get_foreign_keys("competency_curriculum_map")}
         assert fks == {"competency": {"ondelete": "CASCADE"},
-                       "curriculum_standard": {"ondelete": "CASCADE"}}
+                       "curriculum_standard": {"ondelete": "CASCADE"},
+                       "app_user": {"ondelete": "SET NULL"}}          # reviewed_by (refonte C1)
         engine.dispose()
     finally:
         if old_env is None:
@@ -282,17 +283,19 @@ def test_0019_defauts_sur_lignes_existantes_et_reversibilite():
         with engine.connect() as conn:
             assert conn.execute(sa.text("SELECT language FROM response")).scalar_one() == "en"
             assert conn.execute(sa.text("SELECT locale FROM assessment_session")).scalar_one() == "en"
+            # refonte C1 (0030) : la vue neutre ATLAS = framework NULL
             assert conn.execute(sa.text(
-                "SELECT curriculum_view FROM organization")).scalar_one() == "ATLAS"
+                "SELECT curriculum_framework_id FROM organization")).scalar_one() is None
 
         # réversibilité : le downgrade retire tout, le re-upgrade repasse
         command.downgrade(cfg, "0018_legal_hold")
         insp = sa.inspect(engine)   # inspecteur NEUF : pas de cache d'avant-downgrade
         assert "curriculum_standard" not in insp.get_table_names()
         assert "competency_curriculum_map" not in insp.get_table_names()
+        assert "curriculum_framework" not in insp.get_table_names()
         assert not any(c["name"] == "language" for c in insp.get_columns("response"))
         assert not any(c["name"] == "locale" for c in insp.get_columns("assessment_session"))
-        assert not any(c["name"] == "curriculum_view" for c in insp.get_columns("organization"))
+        assert not any(c["name"] in ("curriculum_view", "curriculum_framework_id") for c in insp.get_columns("organization"))
         command.upgrade(cfg, "head")
         engine.dispose()
     finally:
@@ -559,6 +562,67 @@ def test_0029_school_plan_mail_reversible():
         command.downgrade(cfg, "0028_mini_lesson")
         cols = {c["name"] for c in sa.inspect(engine).get_columns("school")}
         assert not ({"country", "plan_mail_weekday", "plan_mail_hour", "timezone"} & cols)
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
+def test_0030_frameworks_table_migrates_data_and_downgrade_is_guarded():
+    # Refonte C1 : à 0029, une org en vue CCSS_M et des standards CCSS_M / UK_NC ; après 0030 les
+    # 3 frameworks historiques existent (publiés, ids stables), les standards pointent le bon
+    # framework, l'org pointe CCSS_M, ATLAS → NULL ; downgrade → enums recopiés ; un framework
+    # étranger bloque le downgrade.
+    import uuid as _uuid
+    from src.models.curriculum import legacy_framework_id
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "0029_school_plan_mail")
+        engine = sa.create_engine(url)
+        org_ccss, org_atlas, std_c, std_uk = (_hex(_uuid.uuid4()) for _ in range(4))
+        with engine.begin() as conn:
+            conn.execute(sa.text("INSERT INTO organization (id, name, curriculum_view) VALUES (:id, 'A', 'CCSS_M')"), {"id": org_ccss})
+            conn.execute(sa.text("INSERT INTO organization (id, name, curriculum_view) VALUES (:id, 'B', 'ATLAS')"), {"id": org_atlas})
+            conn.execute(sa.text("INSERT INTO curriculum_standard (id, framework, code, label_en, label_ar) VALUES (:id, 'CCSS_M', '4.NF.A.1', 'a', 'b')"), {"id": std_c})
+            conn.execute(sa.text("INSERT INTO curriculum_standard (id, framework, code, label_en, label_ar) VALUES (:id, 'UK_NC', 'Y5', 'a', 'b')"), {"id": std_uk})
+        command.upgrade(cfg, "head")
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text("SELECT key, status FROM curriculum_framework ORDER BY key")).fetchall()
+            assert [tuple(r) for r in rows] == [("CCSS_M", "published"), ("MOE_UAE", "published"), ("UK_NC", "published")]
+            fw_c = conn.execute(sa.text("SELECT id FROM curriculum_framework WHERE key='CCSS_M'")).scalar_one()
+            assert fw_c == _hex(legacy_framework_id("CCSS_M"))
+            assert conn.execute(sa.text("SELECT framework_id FROM curriculum_standard WHERE id=:i"), {"i": std_c}).scalar_one() == fw_c
+            assert conn.execute(sa.text("SELECT framework_id FROM curriculum_standard WHERE id=:i"), {"i": std_uk}).scalar_one() == _hex(legacy_framework_id("UK_NC"))
+            assert conn.execute(sa.text("SELECT curriculum_framework_id FROM organization WHERE id=:i"), {"i": org_ccss}).scalar_one() == fw_c
+            assert conn.execute(sa.text("SELECT curriculum_framework_id FROM organization WHERE id=:i"), {"i": org_atlas}).scalar_one() is None
+            cols = {c["name"] for c in sa.inspect(engine).get_columns("competency_curriculum_map")}
+            assert {"reviewed_by", "reviewed_at", "suggested"} <= cols
+        # un framework importé (hors enum) bloque le downgrade
+        with engine.begin() as conn:
+            conn.execute(sa.text("INSERT INTO curriculum_framework (id, key, name_en, name_ar, status, imported_at) "
+                                 "VALUES (:id, 'IB_PYP', 'IB', 'IB', 'draft', '2026-01-01 00:00:00')"), {"id": _hex(_uuid.uuid4())})
+        try:
+            command.downgrade(cfg, "0029_school_plan_mail")
+            assert False, "downgrade aurait dû être refusé"
+        except RuntimeError as e:
+            assert "IB_PYP" in str(e)
+        with engine.begin() as conn:
+            conn.execute(sa.text("DELETE FROM curriculum_framework WHERE key='IB_PYP'"))
+        command.downgrade(cfg, "0029_school_plan_mail")
+        with engine.connect() as conn:
+            assert conn.execute(sa.text("SELECT curriculum_view FROM organization WHERE id=:i"), {"i": org_ccss}).scalar_one() == "CCSS_M"
+            assert conn.execute(sa.text("SELECT curriculum_view FROM organization WHERE id=:i"), {"i": org_atlas}).scalar_one() == "ATLAS"
+            assert conn.execute(sa.text("SELECT framework FROM curriculum_standard WHERE id=:i"), {"i": std_uk}).scalar_one() == "UK_NC"
+        insp = sa.inspect(engine)
+        assert "curriculum_framework" not in insp.get_table_names()
         command.upgrade(cfg, "head")
         engine.dispose()
     finally:

@@ -14,7 +14,7 @@ from typing import Optional
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base, CurriculumView, Role, TimestampMixin, native_enum, utcnow, uuid_pk
+from .base import Base, Role, TimestampMixin, native_enum, utcnow, uuid_pk
 
 
 class Organization(Base):
@@ -25,11 +25,10 @@ class Organization(Base):
     domain: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, default=None)
     external_ref: Mapped[Optional[str]] = mapped_column(String, default=None)  # Google customer id
     seats: Mapped[Optional[int]] = mapped_column(Integer, default=None)  # sièges sous licence
-    # Framework curriculaire affiché aux vues de restitution (B3) — un seul par tenant
-    # en v1 ; ATLAS = vue neutre historique (défauts python + serveur : zéro régression).
-    curriculum_view: Mapped[CurriculumView] = mapped_column(
-        native_enum(CurriculumView, "curriculum_view"),
-        default=CurriculumView.ATLAS, server_default="ATLAS",
+    # Framework curriculaire affiché aux vues de restitution (B3 ; refonte C1 : FK vers la
+    # table des frameworks). NULL = vue neutre ATLAS (aucune étiquette), comportement historique.
+    curriculum_framework_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("curriculum_framework.id", ondelete="SET NULL"), default=None
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
 

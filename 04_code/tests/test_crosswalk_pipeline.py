@@ -29,6 +29,7 @@ from scripts.validate_crosswalk import (
 )
 from scripts.validate_crosswalk import main as validate_main
 from src.models.base import Base, CurriculumFramework
+from src.models.curriculum import legacy_framework_id
 from src.models.competency import Competency
 from src.models.curriculum import CompetencyCurriculumMap, CurriculumStandard
 
@@ -245,7 +246,7 @@ def test_seed_upsert_propagates_pivot_mutation():
             .join(CurriculumStandard,
                   CurriculumStandard.id == CompetencyCurriculumMap.standard_id)
             .where(CompetencyCurriculumMap.competency_id == comp.id,
-                   CurriculumStandard.framework == CurriculumFramework.CCSS_M)
+                   CurriculumStandard.framework_id == legacy_framework_id("CCSS_M"))
         )
     }
     assert AlignmentType.PARTIAL in types and AlignmentType.PREREQ not in types
@@ -266,7 +267,7 @@ def test_seed_uk_range_maps_to_two_standards():
             .join(CompetencyCurriculumMap,
                   CompetencyCurriculumMap.standard_id == CurriculumStandard.id)
             .where(CompetencyCurriculumMap.competency_id == comp.id,
-                   CurriculumStandard.framework == CurriculumFramework.UK_NC)
+                   CurriculumStandard.framework_id == legacy_framework_id("UK_NC"))
         )
     }
     assert uk_codes == {"Y5", "Y6"}
@@ -279,7 +280,7 @@ def test_seed_moe_composed_key_and_labels():
     seed_crosswalk(s)
     std = s.execute(
         select(CurriculumStandard).where(
-            CurriculumStandard.framework == CurriculumFramework.MOE_UAE,
+            CurriculumStandard.framework_id == legacy_framework_id("MOE_UAE"),
             CurriculumStandard.code == "NUM_OPS.G4-G5",
         )
     ).scalar_one()
@@ -294,7 +295,7 @@ def test_seed_ccss_one_standard_per_distinct_code():
     seed_crosswalk(s)
     ccss = s.execute(
         select(CurriculumStandard.code).where(
-            CurriculumStandard.framework == CurriculumFramework.CCSS_M
+            CurriculumStandard.framework_id == legacy_framework_id("CCSS_M")
         )
     ).scalars().all()
     pivot = load_pivot_seed()

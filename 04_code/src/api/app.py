@@ -65,7 +65,8 @@ from src.items.arabic import (
     ar_math_preserved,
     translate_to_arabic,
 )
-from src.models.base import CurriculumView, ItemFlagReason, ItemFlagStatus, ItemStatus, Role
+from src.models.base import FrameworkStatus, ItemFlagReason, ItemFlagStatus, ItemStatus, Role
+from src.models.curriculum import CurriculumFrameworkDef
 from src.models.competency import Competency
 from src.models.item import Item, ItemFlag
 from src.models.measurement import School, Student
@@ -492,10 +493,17 @@ def admin_curriculum(organization_id: Optional[uuid.UUID] = None,
     """Vue curriculaire du tenant (B3) : framework affiché + frameworks disponibles.
     `organization_id` : requis seulement pour un super admin (qui nomme le tenant)."""
     org = _require_curriculum_admin_org(ctx, s, organization_id)
+    published = s.execute(select(CurriculumFrameworkDef)
+                          .where(CurriculumFrameworkDef.status == FrameworkStatus.PUBLISHED)
+                          .order_by(CurriculumFrameworkDef.imported_at, CurriculumFrameworkDef.key)).scalars().all()
+    current = s.get(CurriculumFrameworkDef, org.curriculum_framework_id) if org.curriculum_framework_id else None
     return {
         "organization": {"id": str(org.id), "name": org.name},
-        "curriculum_view": org.curriculum_view.value,
-        "available_frameworks": [v.value for v in CurriculumView],
+        "curriculum_view": current.key if current else "ATLAS",
+        "available_frameworks": ["ATLAS"] + [fw.key for fw in published],
+        # refonte C1 : les frameworks viennent de la table (noms pour l'UI) ; ATLAS = vue neutre
+        "frameworks": [{"key": "ATLAS", "name_en": "Atlas (neutral)", "name_ar": "أطلس (محايد)"}]
+                      + [{"key": fw.key, "name_en": fw.name_en, "name_ar": fw.name_ar, "country": fw.country} for fw in published],
     }
 
 
@@ -513,19 +521,21 @@ def admin_set_curriculum(body: CurriculumViewIn, organization_id: Optional[uuid.
     if not is_super(ctx):
         raise HTTPException(status_code=403, detail="réservé au super admin Atlas")
     org = _require_curriculum_admin_org(ctx, s, organization_id)
-    try:
-        view = CurriculumView(body.curriculum_view)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"curriculum_view non supporté (attendu : {[v.value for v in CurriculumView]})",
-        )
-    org.curriculum_view = view
+    key = (body.curriculum_view or "").strip()
+    if key == "ATLAS":
+        org.curriculum_framework_id = None
+    else:
+        fw = s.execute(select(CurriculumFrameworkDef).where(CurriculumFrameworkDef.key == key)).scalar_one_or_none()
+        if fw is None or fw.status != FrameworkStatus.PUBLISHED:
+            published = [x.key for x in s.execute(select(CurriculumFrameworkDef).where(
+                CurriculumFrameworkDef.status == FrameworkStatus.PUBLISHED)).scalars()]
+            raise HTTPException(status_code=400,
+                                detail=f"curriculum_view non supporté (attendu : {['ATLAS'] + published})")
+        org.curriculum_framework_id = fw.id
     log_action(s, action="curriculum.set_view", user_id=ctx.user_id,
-               resource_type="organization", resource_id=org.id,
-               details={"curriculum_view": view.value})
+               resource_type="organization", resource_id=org.id, details={"curriculum_view": key})
     s.commit()
-    return {"curriculum_view": org.curriculum_view.value}
+    return {"curriculum_view": key}
 
 
 @app.post("/admin/rostering/sync")

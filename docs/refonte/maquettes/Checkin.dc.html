@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Check-in, projected</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#aecbe9}a:hover{color:#ffffff}
+</style>
+</helmet>
+<div style="min-height: 720px; box-sizing: border-box; padding: 40px 56px; background: #0f2238; color: #f6f4f0; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 32px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 15px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: #7ba9d9;">Grade 4B · Fractions check-in</span>
+      <span style="font-size: 15px; color: #aecbe9;">About 10 minutes · names are hidden while projected</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 44px; font-weight: 600; font-variant-numeric: tabular-nums;">07:42</span>
+      <span style="font-size: 16px; color: #aecbe9;">left</span>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 40px; align-items: stretch; flex-grow: 1;">
+
+    <section aria-label="How to join" style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 32px; border-radius: 16px; background: #173357;">
+      <span style="font-size: 18px; color: #d6e4f4;">Open Atlas with your school login, then enter</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 120px; line-height: 1; font-weight: 600; letter-spacing: .08em; color: #ffffff; font-variant-numeric: tabular-nums;">4821</span>
+      <span style="font-size: 16px; color: #aecbe9;">Work on your own. Questions change to fit you, so your neighbour's screen will look different.</span>
+    </section>
+
+    <section aria-label="Class progress" style="flex: 2 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 40px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 64px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;">21</span><span style="font-size: 17px; color: #aecbe9;">working</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 64px; font-weight: 600; line-height: 1; color: #7fcfca; font-variant-numeric: tabular-nums;">3</span><span style="font-size: 17px; color: #aecbe9;">finished</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 64px; font-weight: 600; line-height: 1; color: #7b8aa0; font-variant-numeric: tabular-nums;">2</span><span style="font-size: 17px; color: #aecbe9;">not joined</span></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 10px;" aria-label="One tile per student, no names">
+        <sc-for list="{{tiles}}" as="t" hint-placeholder-count="26">
+          <span style="{{t.style}}"></span>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 14px; color: #aecbe9;">
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: #2f9c95;"></span>Finished</span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: #2c63a8;"></span>Working</span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border-radius: 4px; border: 2px dashed #4a5d78; box-sizing: border-box;"></span>Not joined</span>
+      </div>
+
+      <p style="margin: 0; font-size: 15px; color: #d6e4f4;">Results go to your laptop only. Your plan for the week is ready about a minute after the last student finishes.</p>
+    </section>
+  </div>
+
+  <footer style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: #7b8aa0;">
+    <span>Demo data · fictitious class</span>
+    <a href="Main.dc.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid #4983c4; color: #d6e4f4; text-decoration: none; font-weight: 600; font-size: 14px;">End check-in</a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var base = 'display:block;aspect-ratio:1;border-radius:6px;box-sizing:border-box;';
+    var done = base + 'background:#2f9c95;';
+    var work = base + 'background:#2c63a8;';
+    var off = base + 'border:2px dashed #4a5d78;';
+    var pattern = ['w','w','d','w','w','w','w','o','w','w','d','w','w','w','w','w','w','w','w','d','w','w','w','o','w','w'];
+    var tiles = pattern.map(function (p) { return { style: p === 'd' ? done : (p === 'o' ? off : work) }; });
+    return { tiles: tiles };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Data and compliance</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #eceae4;font-size:14px}
+.k{color:#54504a}.v{font-weight:600;text-align:right}
+.doc{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:#f6f4f0;text-decoration:none;color:#272521}
+select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid #c9d6e8;font:500 14px 'IBM Plex Sans',sans-serif;color:#272521;background:#ffffff}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Al Noor Academy · IT administration</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">Data and compliance</h1>
+    </div>
+    <a class="btn btn-ghost" href="IT-sso.dc.html">Sign-in and rosters</a>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+    <section class="card" style="flex: 1 1 380px; min-width: 0; padding: 20px; display: flex; flex-direction: column;">
+      <h2 style="margin: 0 0 8px; font-size: 16px; font-weight: 600;">Where and what</h2>
+      <div class="row"><span class="k">Hosting region</span><span class="v">United Arab Emirates</span></div>
+      <div class="row"><span class="k">Student data collected</span><span class="v">Name, class, answers, skill estimates</span></div>
+      <div class="row"><span class="k">Not collected</span><span class="v">Photos, audio, location, free chat</span></div>
+      <div class="row"><span class="k">AI models on student data</span><span class="v">None at runtime</span></div>
+      <div class="row"><span class="k">Applicable law</span><span class="v">Federal Decree-Law No. 45 of 2021</span></div>
+      <div class="row"><span class="k">Audit log</span><span class="v">Append-only, kept by Atlas</span></div>
+    </section>
+
+    <section class="card" style="flex: 1 1 380px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Retention</h2>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="ret" style="font-size: 13px; font-weight: 600; color: #3c3934;">Delete a student's data after they leave the school</label>
+        <select id="ret"><option>12 months after leaving</option><option>6 months after leaving</option><option>At the end of the contract</option></select>
+      </div>
+      <span style="font-size: 13px; color: #54504a;">A legal hold on a student pauses deletion until you lift it.</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <a class="btn btn-ghost" href="#">Export a student's data</a>
+        <a class="btn btn-ghost" href="#">Delete a student's data</a>
+      </div>
+    </section>
+
+    <section class="card" style="flex: 1 1 380px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Documents for your vendor review</h2>
+      <a class="doc" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a3f70" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg><span style="display: flex; flex-direction: column;"><span style="font-weight: 600; font-size: 14px;">Data processing agreement</span><span style="font-size: 12px; color: #736e64;">Ready to sign</span></span></a>
+      <a class="doc" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a3f70" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg><span style="display: flex; flex-direction: column;"><span style="font-weight: 600; font-size: 14px;">Third-party risk answers</span><span style="font-size: 12px; color: #736e64;">Mapped to ADEK School Digital Policy §5.5</span></span></a>
+      <a class="doc" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a3f70" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg><span style="display: flex; flex-direction: column;"><span style="font-weight: 600; font-size: 14px;">Security overview</span><span style="font-size: 12px; color: #736e64;">Encryption, access control, backups, incidents</span></span></a>
+      <a class="doc" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a3f70" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg><span style="display: flex; flex-direction: column;"><span style="font-weight: 600; font-size: 14px;">Parent consent template</span><span style="font-size: 12px; color: #736e64;">English and Arabic</span></span></a>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo screen. Document contents to be written and reviewed before use.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Department review</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.pre{display:inline-flex;padding:4px 8px;border-radius:6px;background:#fdf6e9;border:1px solid #e8b352;color:#7c4d10;font-size:13px;font-weight:600}
+.skill{display:inline-flex;padding:4px 8px;border-radius:6px;background:#f6f4f0;border:1px solid #dcd8cf;color:#3c3934;font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;color:#736e64;text-align:left;padding:8px 10px;border-bottom:1px solid #eceae4}
+td{padding:12px 10px;border-bottom:1px solid #eceae4;vertical-align:middle}
+.n{text-align:center;font-weight:600;font-variant-numeric:tabular-nums;border-radius:6px}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 32px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 24px;">
+
+  <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Grade 4 · Department review · November</span>
+      <h1 style="margin: 0; font-size: 30px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em;">One root cause shows up in all three classes</h1>
+      <p style="margin: 0; font-size: 15px; color: #54504a;">3 classes, 78 students. 11 of 13 Grade 4 fraction skills measured this month.</p>
+    </div>
+    <span style="font-size: 13px; color: #736e64;">Mr. Karim Saleh · Head of Maths</span>
+  </header>
+
+  <section class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Common root causes · students blocked, by class</h2>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead><tr><th>Missing step → blocked skill</th><th style="text-align: center; width: 90px;">4A</th><th style="text-align: center; width: 90px;">4B</th><th style="text-align: center; width: 90px;">4C</th><th style="width: 220px;">Reading</th></tr></thead>
+        <tbody>
+          <tr><td><div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="pre">Equivalent fractions by multiplication</span><span style="color: #9a9489;">→</span><span class="skill">Add, unlike denominators</span></div></td><td><div class="n" style="background: #f9e6c2; padding: 8px 0;">6</div></td><td><div class="n" style="background: #f9e6c2; padding: 8px 0;">7</div></td><td><div class="n" style="background: #f1cd86; padding: 8px 0;">8</div></td><td style="font-size: 13px; font-weight: 600; color: #7c4d10;">All classes: likely a sequencing issue, not a class issue</td></tr>
+          <tr><td><div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="pre">Least common multiple</span><span style="color: #9a9489;">→</span><span class="skill">Compare, different denominators</span></div></td><td><div class="n" style="background: #fdf6e9; padding: 8px 0;">3</div></td><td><div class="n" style="background: #f9e6c2; padding: 8px 0;">5</div></td><td><div class="n" style="background: #fdf6e9; padding: 8px 0;">2</div></td><td style="font-size: 13px; color: #54504a;">Mostly 4B, handled there this week</td></tr>
+          <tr><td><div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="pre">Multiplication facts to 100</span><span style="color: #9a9489;">→</span><span class="skill">Find factors of a number</span></div></td><td><div class="n" style="background: #fdf6e9; padding: 8px 0;">4</div></td><td><div class="n" style="background: #fbfaf8; padding: 8px 0;">1</div></td><td><div class="n" style="background: #f9e6c2; padding: 8px 0;">5</div></td><td style="font-size: 13px; color: #54504a;">Grade 3 skill: worth raising with Grade 3 team</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <section class="card" style="flex: 999 1 520px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Actions taken this month and their measured effect</h2>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr><th>Lesson</th><th>Class</th><th>Taught</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td>Equivalence with folded strips</td><td>4A</td><td>22 Oct</td><td><span style="font-weight: 600; color: #185f5b;">5 of 6 unlocked</span></td></tr>
+            <tr><td>GCD with factor lists</td><td>4B</td><td>27 Oct</td><td><span style="font-weight: 600; color: #185f5b;">4 of 6 unlocked</span></td></tr>
+            <tr><td>Compare with benchmarks</td><td>4B</td><td>29 Oct</td><td style="color: #736e64;">Re-check scheduled</td></tr>
+            <tr><td>Times tables fluency</td><td>4C</td><td>28 Oct</td><td style="color: #736e64;">Not re-checked yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <span style="font-size: 12px; color: #736e64;">Effects are shown per lesson and class. Atlas never ranks teachers.</span>
+    </section>
+
+    <section class="card" style="flex: 1 1 340px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Decision for this month</h2>
+      <label for="decision" style="font-size: 13px; color: #54504a;">What will all Grade 4 classes do differently?</label>
+      <textarea id="decision" rows="4" style="box-sizing: border-box; width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #c9d6e8; font: 15px/1.5 'IBM Plex Sans', sans-serif; color: #272521; resize: vertical;">Teach equivalence by multiplication before adding unlike fractions, in all three classes, from 9 Nov.</textarea>
+      <span style="font-size: 13px; color: #54504a;">Next month's review opens on the effect of this decision.</span>
+      <a class="btn btn-primary" href="#" style="align-self: flex-start;">Record decision</a>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. School, staff and students are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

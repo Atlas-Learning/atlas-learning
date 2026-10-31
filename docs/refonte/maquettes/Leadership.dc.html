@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Evidence by grade</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+.stat{display:flex;flex-direction:column;gap:4px;padding:20px;flex:1 1 220px;min-width:0}
+.big{font-size:34px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;color:#736e64;text-align:left;padding:8px 12px;border-bottom:1px solid #eceae4}
+td{padding:14px 12px;border-bottom:1px solid #eceae4;font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 32px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 24px;">
+
+  <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Al Noor Academy · Primary maths · Term 1</span>
+      <h1 style="margin: 0; font-size: 30px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em;">Progress you can show, grade by grade</h1>
+    </div>
+    <a class="btn btn-primary" href="#">Download evidence pack</a>
+  </header>
+
+  <section class="card" aria-label="Term summary" style="display: flex; flex-wrap: wrap;">
+    <div class="stat"><span class="big">9 of 11</span><span style="font-size: 14px; color: #54504a;">maths teachers ran at least one loop per week</span></div>
+    <div class="stat" style="border-left: 1px solid #eceae4;"><span class="big">64</span><span style="font-size: 14px; color: #54504a;">loops closed: lesson taught, then re-measured</span></div>
+    <div class="stat" style="border-left: 1px solid #eceae4;"><span class="big" style="color: #1f7d77;">182</span><span style="font-size: 14px; color: #54504a;">skills unlocked by a student after a lesson, measured</span></div>
+  </section>
+
+  <section class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">By grade</h2>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead><tr><th>Grade</th><th>Classes active</th><th>Skills measured</th><th>Unlocks measured</th><th>Common cause flagged</th><th></th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">Grade 3</td><td>3 of 3</td><td>9 of 10</td><td>58</td><td>Multiplication facts</td><td><a href="#" style="font-weight: 600;">Open</a></td></tr>
+          <tr><td style="font-weight: 600;">Grade 4</td><td>3 of 3</td><td>11 of 13</td><td>79</td><td>Equivalence by multiplication</td><td><a href="Department.dc.html" style="font-weight: 600;">Open</a></td></tr>
+          <tr><td style="font-weight: 600;">Grade 5</td><td>2 of 3</td><td>6 of 9</td><td>45</td><td>None yet</td><td><a href="#" style="font-weight: 600;">Open</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+    <section class="card" style="flex: 999 1 520px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">What the evidence pack contains</h2>
+      <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.55; color: #54504a;">
+        <li>Growth per skill and grade, each with its likely range</li>
+        <li>Every lesson taught for a root cause, and its measured effect</li>
+        <li>Department decisions and what changed after them</li>
+        <li>Coverage: which skills were measured, which were only estimated</li>
+      </ul>
+      <p style="margin: 4px 0 0; font-size: 13px; color: #736e64;">Built to support your school's self-evaluation. Atlas reports evidence; it does not give an inspection judgement.</p>
+    </section>
+
+    <section class="card" style="flex: 1 1 320px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">What leadership does not see</h2>
+      <p style="margin: 0; font-size: 14px; line-height: 1.55; color: #54504a;">Results by teacher. Teachers adopt Atlas because it is their tool, not a review of their work. Adoption is shown as a school total.</p>
+      <a class="btn btn-ghost" href="#" style="align-self: flex-start;">Data and privacy settings</a>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. School and figures are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

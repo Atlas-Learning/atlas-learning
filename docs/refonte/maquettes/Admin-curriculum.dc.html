@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas Admin — Curriculum mapping</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+.fw{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;text-decoration:none;color:#272521;border:1px solid transparent}
+.fw.on{background:#eef4fb;border-color:#aecbe9}
+.al{display:inline-flex;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.03em}
+.ex{background:#edf8f7;color:#185f5b}.pa{background:#fdf6e9;color:#7c4d10}.en{background:#eef4fb;color:#1a3f70}.pr{background:#f6f4f0;color:#54504a}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-size:12px;font-weight:600;color:#736e64;text-align:left;padding:8px 10px;border-bottom:1px solid #eceae4;white-space:nowrap}
+td{padding:10px;border-bottom:1px solid #eceae4;vertical-align:middle}
+tr.sel td{background:#eef4fb}
+select{min-height:40px;padding:0 10px;border-radius:8px;border:1px solid #c9d6e8;font:500 14px 'IBM Plex Sans',sans-serif;color:#272521;background:#ffffff}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Atlas admin · Curriculums</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">National Curriculum (England) · fractions</h1>
+      <p style="margin: 0; font-size: 14px; color: #54504a;">32 of 32 Atlas skills mapped · draft, not visible to schools yet</p>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+      <a class="btn btn-ghost" href="#">Coverage report</a>
+      <a class="btn btn-primary" href="#">Publish to schools</a>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+
+    <aside class="card" style="flex: 1 1 220px; max-width: 260px; min-width: 0; padding: 10px; display: flex; flex-direction: column; gap: 4px;">
+      <a class="fw" href="#"><span style="font-size: 14px; font-weight: 600;">Common Core (US)</span><span style="font-size: 12px; color: #736e64;">Draft · 32 mapped</span></a>
+      <a class="fw on" href="#"><span style="font-size: 14px; font-weight: 600;">National Curriculum (England)</span><span style="font-size: 12px; color: #736e64;">Draft · 32 mapped</span></a>
+      <a class="fw" href="#"><span style="font-size: 14px; font-weight: 600;">MoE UAE</span><span style="font-size: 12px; color: #736e64;">Draft · domain and grade band</span></a>
+      <a class="fw" href="#"><span style="font-size: 14px; font-weight: 600;">[Next curriculum]</span><span style="font-size: 12px; color: #736e64;">Not imported</span></a>
+      <a href="#" style="margin-top: 6px; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px dashed #aecbe9; text-decoration: none; font-size: 14px; font-weight: 600;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Import a curriculum</a>
+    </aside>
+
+    <section class="card" style="flex: 999 1 540px; min-width: 0; padding: 16px 16px 8px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: #54504a;">
+        <span class="al ex">EXACT · 22</span><span class="al pa">PARTIAL · 6</span><span class="al en">ENRICH · 3</span><span class="al pr">PREREQ · 1</span>
+        <span style="margin-left: auto;">All confidence H</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr><th>Atlas skill</th><th>Curriculum</th><th>Alignment</th><th>Conf.</th></tr></thead>
+          <tbody>
+            <tr><td>Unit fractions 1/b</td><td>Y3 · unit fractions</td><td><span class="al ex">EXACT</span></td><td>H</td></tr>
+            <tr><td>Equivalent fractions with models</td><td>Y3 · equivalent fractions (diagrams)</td><td><span class="al ex">EXACT</span></td><td>H</td></tr>
+            <tr><td>Place a fraction on a number line</td><td>Y3 · fractions as numbers</td><td><span class="al pa">PARTIAL</span></td><td>H</td></tr>
+            <tr><td>Equivalent fractions by multiplication</td><td>Y4–Y5 · families, write equivalents</td><td><span class="al ex">EXACT</span></td><td>H</td></tr>
+            <tr><td>Compare, different denominators</td><td>Y5–Y6 · compare and order</td><td><span class="al pa">PARTIAL</span></td><td>H</td></tr>
+            <tr class="sel"><td style="font-weight: 600;">Find least common multiple</td><td>Y6 · common multiples</td><td><span class="al en">ENRICH</span></td><td>H</td></tr>
+            <tr><td>Find a common denominator</td><td>Y6 · common multiples, same denomination</td><td><span class="al en">ENRICH</span></td><td>H</td></tr>
+            <tr><td>Whole numbers as fractions</td><td>Y3–Y5 · implicit</td><td><span class="al pr">PREREQ</span></td><td>H</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Edit mapping" style="flex: 1 1 300px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="mono" style="color: #736e64;">MATH.G4.NS.LCM</span>
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Find least common multiple</h2>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px;">
+        <span style="font-size: 12px; font-weight: 600; color: #736e64;">Mapped to</span>
+        <span>Year 6 · common multiples</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;"><label for="align" style="font-size: 12px; font-weight: 600; color: #736e64;">Alignment</label><select id="align"><option>ENRICH</option><option>EXACT</option><option>PARTIAL</option><option>BROADER</option><option>PREREQ</option></select></div>
+        <div style="display: flex; flex-direction: column; gap: 4px;"><label for="conf" style="font-size: 12px; font-weight: 600; color: #736e64;">Confidence</label><select id="conf"><option>H</option><option>M</option><option>L</option></select></div>
+      </div>
+      <div style="padding: 12px 14px; border-radius: 10px; background: #f6f4f0; display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 12px; font-weight: 600; color: #736e64;">What a school sees</span>
+        <span style="font-size: 14px;">Taught earlier than in your curriculum (Year 6)</span>
+      </div>
+      <a class="btn btn-primary" href="#" style="align-self: flex-start;">Save mapping</a>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Mappings from the fractions crosswalk draft in the repository. Publication status is illustrative.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

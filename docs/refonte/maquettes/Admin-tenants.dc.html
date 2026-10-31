@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas Admin — Schools and pilots</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;color:#736e64;text-align:left;padding:10px 12px;border-bottom:1px solid #eceae4;white-space:nowrap}
+td{padding:12px;border-bottom:1px solid #eceae4;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.sel td{background:#eef4fb}
+.stg{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.crit{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Atlas admin · Tenants</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">Schools and pilots</h1>
+    </div>
+    <a class="btn btn-primary" href="#">Set up a new school</a>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+    <section class="card" style="flex: 999 1 600px; min-width: 0; padding: 8px 12px;">
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr><th>School</th><th>Emirate</th><th>Curriculum</th><th>Stage</th><th>Students</th><th>Classes looping weekly</th></tr></thead>
+          <tbody>
+            <tr class="sel"><td style="font-weight: 600;">Al Noor Academy</td><td>Dubai</td><td>England NC</td><td><span class="stg" style="background: #fdf6e9; color: #7c4d10;">Pilot · week 4 of 8</span></td><td>232</td><td>7 of 9</td></tr>
+            <tr><td style="font-weight: 600;">Crescent American School</td><td>Abu Dhabi</td><td>Common Core</td><td><span class="stg" style="background: #edf8f7; color: #185f5b;">Licence</span></td><td>410</td><td>8 of 8</td></tr>
+            <tr><td style="font-weight: 600;">Crescent Private School</td><td>Abu Dhabi</td><td>MoE UAE</td><td><span class="stg" style="background: #edf8f7; color: #185f5b;">Licence</span></td><td>88</td><td>3 of 3</td></tr>
+            <tr><td style="font-weight: 600;">Crescent International</td><td>Dubai</td><td>[Next curriculum]</td><td><span class="stg" style="background: #eef4fb; color: #1a3f70;">Onboarding · SSO</span></td><td>0</td><td style="color: #736e64;">Not started</td></tr>
+            <tr><td style="font-weight: 600;">Demo school</td><td>Demo</td><td>England NC</td><td><span class="stg" style="background: #f6f4f0; color: #54504a;">Sales demo</span></td><td>75</td><td style="color: #736e64;">Seeded data</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Pilot status" style="flex: 1 1 340px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span class="eyebrow">Pilot · Al Noor Academy</span>
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Success criteria signed on 7 Oct</h2>
+      </div>
+      <div class="crit"><span style="width: 20px; height: 20px; border-radius: 50%; background: #1f7d77; flex: none;"></span><span>Most pilot teachers close at least one loop a week · <strong>7 of 9 classes</strong></span></div>
+      <div class="crit"><span style="width: 20px; height: 20px; border-radius: 50%; background: #1f7d77; flex: none;"></span><span>Measured unlocks after a lesson, reported by grade · <strong>on track</strong></span></div>
+      <div class="crit"><span style="width: 20px; height: 20px; border-radius: 50%; background: #dc9a2c; flex: none;"></span><span>Roster clean, no blocking IT warning · <strong>2 warnings open</strong></span></div>
+      <div class="crit"><span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #c2bcb0; box-sizing: border-box; flex: none;"></span><span>Head of Maths feedback session · <strong>planned week 7</strong></span></div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px;">
+        <a class="btn btn-primary" href="#">Draft the pilot report</a>
+        <a class="btn btn-ghost" href="#">Tenant settings</a>
+      </div>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. All schools are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

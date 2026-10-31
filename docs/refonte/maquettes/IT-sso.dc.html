@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — SSO and roster</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+.step{display:flex;gap:16px;align-items:flex-start;padding:20px;border-bottom:1px solid #eceae4}
+.step:last-child{border-bottom:0}
+.ok{width:28px;height:28px;border-radius:50%;background:#1f7d77;color:#ffffff;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.todo{width:28px;height:28px;border-radius:50%;border:2px solid #c2bcb0;box-sizing:border-box;color:#736e64;display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:13px;font-weight:700}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
+.opt{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:600;background:#f6f4f0;color:#54504a}
+.opt.on{background:#1a3f70;color:#ffffff}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Al Noor Academy · IT administration</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">Sign-in and rosters</h1>
+      <p style="margin: 0; font-size: 14px; color: #54504a;">3 of 4 steps done. Teachers can sign in once step 2 has no blocking warnings.</p>
+    </div>
+    <a class="btn btn-ghost" href="IT-data.dc.html">Data and compliance</a>
+  </header>
+
+  <section class="card" style="display: flex; flex-direction: column;">
+    <div class="step">
+      <span class="ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+      <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600;">1 · Single sign-on (OIDC)</h2>
+        <span style="font-size: 14px; color: #54504a;">Connected to Microsoft Entra ID. Multi-factor authentication stays with your identity provider; Atlas stores no passwords.</span>
+        <span class="mono" style="color: #736e64;">Issuer · login.microsoftonline.com/••••/v2.0</span>
+      </div>
+      <a class="btn btn-ghost" href="#">Test a sign-in</a>
+    </div>
+
+    <div class="step">
+      <span class="ok" style="background: #dc9a2c;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg></span>
+      <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600;">2 · Roster source</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;"><span class="opt">Google Classroom</span><span class="opt">OneRoster API</span><span class="opt on">OneRoster CSV</span><span class="opt">Directory sync</span></div>
+        <span style="font-size: 14px; color: #54504a;">Last sync today 06:00 · 232 students, 11 teachers, 9 classes · nightly</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 10px; background: #fdf6e9; font-size: 14px; color: #3c3934;">
+          <span><strong>2 students</strong> have no class and were not imported.</span>
+          <span><strong>1 teacher</strong> uses an email outside your allowed domains.</span>
+        </div>
+      </div>
+      <a class="btn btn-primary" href="#">Review warnings</a>
+    </div>
+
+    <div class="step">
+      <span class="ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+      <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600;">3 · Allowed domains</h2>
+        <span class="mono">alnoor.example.ae · students.alnoor.example.ae</span>
+      </div>
+      <a class="btn btn-ghost" href="#">Edit</a>
+    </div>
+
+    <div class="step">
+      <span class="todo">4</span>
+      <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600;">4 · Parent access</h2>
+        <span style="font-size: 14px; color: #54504a;">Parents sign in with a single-use link sent to the email in your roster. No account to create. Off until you turn it on.</span>
+      </div>
+      <a class="btn btn-ghost" href="#">Turn on</a>
+    </div>
+  </section>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. Domains and figures are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

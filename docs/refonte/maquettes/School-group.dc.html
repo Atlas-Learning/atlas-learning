@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — School group overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;color:#736e64;text-align:left;padding:10px 12px;border-bottom:1px solid #eceae4;white-space:nowrap}
+td{padding:14px 12px;border-bottom:1px solid #eceae4;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cur{display:inline-flex;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;background:#f6f4f0;color:#3c3934}
+.yes{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#fdf6e9;color:#7c4d10}
+</style>
+</helmet>
+<div style="min-height: 860px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Crescent Schools Group · 4 schools · primary maths</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">The same gap appears in three schools, across three curriculums</h1>
+      <p style="margin: 0; font-size: 14px; color: #54504a;">Schools keep their own curriculum. Atlas compares them on one shared skills graph.</p>
+    </div>
+    <a class="btn btn-primary" href="#">Download group report</a>
+  </header>
+
+  <section class="card" style="padding: 8px 12px;">
+    <div style="overflow-x: auto;">
+      <table>
+        <thead><tr><th>School</th><th>Curriculum</th><th>Grades on Atlas</th><th>Classes active</th><th>Unlocks per student, this term</th><th>Equivalence by multiplication</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 600;">Al Noor Academy</td><td><span class="cur">England NC</span></td><td>3 to 5</td><td>7 of 9</td><td>2.4</td><td><span class="yes">Common cause</span></td></tr>
+          <tr><td style="font-weight: 600;">Crescent American School</td><td><span class="cur">Common Core</span></td><td>3 to 5</td><td>8 of 8</td><td>2.9</td><td><span class="yes">Common cause</span></td></tr>
+          <tr><td style="font-weight: 600;">Crescent Private School</td><td><span class="cur">MoE UAE</span></td><td>4 only</td><td>3 of 3</td><td>1.8</td><td><span class="yes">Common cause</span></td></tr>
+          <tr><td style="font-weight: 600;">Crescent International</td><td><span class="cur">[Next curriculum]</span></td><td>Onboarding</td><td>0 of 6</td><td style="color: #736e64;">No data yet</td><td style="color: #736e64;">No data yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+    <section class="card" style="flex: 999 1 520px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">What this suggests for the group</h2>
+      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #54504a;">Equivalence by multiplication blocks fraction addition in three schools that follow different curriculums. The cause is the teaching sequence, not one school. A shared Grade 4 lesson sequence would address it in all three.</p>
+      <p style="margin: 0; font-size: 13px; color: #736e64;">Unlocks per student compare schools on the same skills. They are not test scores and do not rank teachers.</p>
+    </section>
+    <section class="card" style="flex: 1 1 320px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Group settings</h2>
+      <span style="font-size: 14px; color: #54504a;">One contract, one data agreement, one SSO tenant per school.</span>
+      <a href="#" style="font-size: 14px; font-weight: 600;">Manage schools and licences</a>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. The group and its schools are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

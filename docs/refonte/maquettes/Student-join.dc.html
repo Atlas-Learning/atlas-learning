@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Join a check-in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Sans+Arabic:wght@500;600&amp;family=IBM+Plex+Mono:wght@600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.digit{width:72px;height:88px;box-sizing:border-box;border-radius:14px;border:2px solid #c9d6e8;background:#ffffff;text-align:center;font:600 44px 'IBM Plex Mono',monospace;color:#1a3f70}
+</style>
+</helmet>
+<div style="min-height: 720px; box-sizing: border-box; padding: 24px 40px 32px; background: #f6f4f0; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 24px;">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+    <span style="font-size: 18px; font-weight: 700; color: #1a3f70;">Atlas</span>
+    <button type="button" lang="ar" style="min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #dcd8cf; background: #ffffff; font: 600 15px 'IBM Plex Sans Arabic', sans-serif; color: #3c3934; cursor: pointer;">عربي</button>
+  </header>
+
+  <main style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+    <form style="width: 100%; max-width: 520px; box-sizing: border-box; padding: 40px; border-radius: 20px; background: #ffffff; border: 1px solid #e3dfd6; display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center;">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px; background: #edf8f7; color: #185f5b; font-size: 14px; font-weight: 600;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        Signed in with your school account · Omar K.
+      </div>
+      <h1 style="margin: 0; font-size: 28px; line-height: 1.25; font-weight: 600;">Enter the code on the board</h1>
+      <fieldset style="border: 0; margin: 0; padding: 0; display: flex; gap: 12px; justify-content: center;">
+        <legend style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Class code, 4 digits</legend>
+        <label for="d1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Digit 1</label><input id="d1" class="digit" inputmode="numeric" maxlength="1" value="4">
+        <label for="d2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Digit 2</label><input id="d2" class="digit" inputmode="numeric" maxlength="1" value="8">
+        <label for="d3" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Digit 3</label><input id="d3" class="digit" inputmode="numeric" maxlength="1" value="2">
+        <label for="d4" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Digit 4</label><input id="d4" class="digit" inputmode="numeric" maxlength="1" value="" style="border-color: #2c63a8;">
+      </fieldset>
+      <a href="Student-session.dc.html" style="display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; border-radius: 12px; background: #1a3f70; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 17px;">Join Grade 4B</a>
+      <span style="font-size: 14px; color: #736e64;">About 10 minutes. No timer, no grade.</span>
+    </form>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1024,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

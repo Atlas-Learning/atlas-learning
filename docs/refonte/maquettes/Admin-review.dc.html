@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas Admin — Review queue</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Sans+Arabic:wght@500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+.tab{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;text-decoration:none;color:#54504a;background:#f6f4f0}
+.tab.on{background:#1a3f70;color:#ffffff}
+.q{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:10px;border:1px solid transparent;text-decoration:none;color:#272521}
+.q.on{background:#eef4fb;border-color:#aecbe9}
+.src{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12px}
+.opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid #dcd8cf;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.st{display:inline-flex;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;background:#f6f4f0;color:#736e64}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Atlas admin · Content</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">Review queue</h1>
+    </div>
+    <nav style="display: flex; flex-wrap: wrap; gap: 6px;" aria-label="Filter">
+      <a class="tab on" href="#">All · 23</a>
+      <a class="tab" href="#">Teacher flags · 3</a>
+      <a class="tab" href="#">Failed validation · 6</a>
+      <a class="tab" href="#">From schools · 4</a>
+      <a class="tab" href="#">Arabic to validate · 10</a>
+    </nav>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+
+    <section class="card" aria-label="Queue" style="flex: 1 1 300px; max-width: 380px; min-width: 0; padding: 10px; display: flex; flex-direction: column; gap: 4px;">
+      <a class="q on" href="#"><span class="src" style="color: #a06410;">Teacher flag · 2 schools</span><span style="font-size: 14px; font-weight: 600;">Two correct options in an equivalence MCQ</span><span class="mono" style="color: #736e64;">tpl EQUIV-MCQ-03 · 14 items</span></a>
+      <a class="q" href="#"><span class="src" style="color: #736e64;">Failed validation</span><span style="font-size: 14px; font-weight: 600;">Arabic rendering: mixed number order in RTL</span><span class="mono" style="color: #736e64;">tpl MIXED-TO-IMP-02 · 8 items</span></a>
+      <a class="q" href="#"><span class="src" style="color: #1a3f70;">From school · Al Noor Academy</span><span style="font-size: 14px; font-weight: 600;">“Pizza slices” word problem, LCM</span><span class="mono" style="color: #736e64;">school item · 41 responses</span></a>
+      <a class="q" href="#"><span class="src" style="color: #736e64;">Arabic to validate</span><span style="font-size: 14px; font-weight: 600;">Compare with benchmarks, 6 new items</span><span class="mono" style="color: #736e64;">tpl COMPARE-BENCH-01</span></a>
+      <a class="q" href="#"><span class="src" style="color: #a06410;">Teacher flag · 1 school</span><span style="font-size: 14px; font-weight: 600;">Wording unclear: “lowest terms”</span><span class="mono" style="color: #736e64;">tpl SIMPLIFY-04 · 11 items</span></a>
+    </section>
+
+    <section class="card" aria-label="Selected issue" style="flex: 999 1 560px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <span class="src" style="color: #a06410;">Teacher flag · Al Noor Academy, Riverside School</span>
+        <h2 style="margin: 0; font-size: 21px; font-weight: 600;">Two options are correct: 1/3 and 4/12</h2>
+        <p style="margin: 0; font-size: 14px; color: #54504a;">The distractor rule of the template does not exclude fractions equivalent to the answer. Found in 14 generated items, 9 of them active and served 212 times.</p>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+        <div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 10px; background: #fbfaf8;">
+          <span class="eyebrow">Item EN · sample</span>
+          <span style="font-size: 15px; font-weight: 600;">Which fraction is equivalent to 2/6?</span>
+          <span class="opt" style="border-color: #7fcfca; background: #edf8f7;">A · 1/3 <span style="margin-left: auto; font-size: 12px; color: #185f5b;">answer key</span></span>
+          <span class="opt" style="border-color: #e8b352; background: #fdf6e9;">B · 4/12 <span style="margin-left: auto; font-size: 12px; color: #7c4d10;">also correct</span></span>
+          <span class="opt">C · 2/3</span>
+          <span class="opt">D · 3/6</span>
+        </div>
+        <div dir="rtl" lang="ar" style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 10px; background: #fbfaf8; font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;">
+          <span class="eyebrow">النسخة العربية</span>
+          <span style="font-size: 15px; font-weight: 600;">أي كسر يكافئ <span dir="ltr">2/6</span>؟</span>
+          <span class="opt" style="border-color: #7fcfca; background: #edf8f7;">أ · <span dir="ltr">1/3</span></span>
+          <span class="opt" style="border-color: #e8b352; background: #fdf6e9;">ب · <span dir="ltr">4/12</span></span>
+          <span class="opt">ج · <span dir="ltr">2/3</span></span>
+          <span class="opt">د · <span dir="ltr">3/6</span></span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="eyebrow">Fix at the template</span>
+        <div class="mono" style="padding: 14px 16px; border-radius: 10px; background: #f6f4f0; line-height: 1.7; overflow-x: auto;">
+          <div style="color: #736e64;">EQUIV-MCQ-03 · distractor rule</div>
+          <div style="color: #7c4d10;">− exclude: options == answer</div>
+          <div style="color: #185f5b;">+ exclude: options equivalent to answer (same value after simplifying)</div>
+        </div>
+        <span style="font-size: 13px; color: #54504a;">Applying the fix creates new versions of the 14 items. Their 212 past responses stay visible but no longer count toward calibration.</span>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+        <span class="st">ai_generated</span><span style="color: #9a9489;">→</span><span class="st">human_reviewed</span><span style="color: #9a9489;">→</span><span class="st">linguist_validated</span><span style="color: #9a9489;">→</span><span class="st" style="background: #edf8f7; color: #185f5b;">active</span>
+        <span style="margin-left: auto; font-size: 13px; color: #736e64;">New versions restart at human_reviewed</span>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; border-top: 1px solid #eceae4;">
+        <a class="btn btn-ghost" href="#" style="margin-top: 12px;">Reject flag</a>
+        <a class="btn btn-ghost" href="#" style="margin-top: 12px;">Quarantine 9 active items</a>
+        <a class="btn btn-primary" href="#" style="margin-top: 12px; margin-left: auto;">Fix template and regenerate</a>
+      </div>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. Schools are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

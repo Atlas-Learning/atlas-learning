@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas Admin — Arabic validation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Sans+Arabic:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+.q{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;text-decoration:none;color:#272521;border:1px solid transparent}
+.q.on{background:#eef4fb;border-color:#aecbe9}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12px}
+.chk{display:flex;gap:10px;align-items:center;font-size:14px}
+.d{width:18px;height:18px;border-radius:50%;flex:none}
+.term{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #eceae4;font-size:14px}
+.ar{font-family:'IBM Plex Sans Arabic','IBM Plex Sans',sans-serif}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Atlas admin · Linguist</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">Arabic to validate · 10 items</h1>
+    </div>
+    <span style="font-size: 13px; color: #736e64;">An item reaches students in Arabic only after this step.</span>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+
+    <aside class="card" style="flex: 1 1 220px; max-width: 260px; min-width: 0; padding: 10px; display: flex; flex-direction: column; gap: 4px;">
+      <a class="q on" href="#"><span style="font-size: 14px; font-weight: 600;">Compare with 1/2</span><span class="mono" style="color: #736e64;">COMPARE-BENCH-01 · 1 of 6</span></a>
+      <a class="q" href="#"><span style="font-size: 14px; font-weight: 600;">Compare with 1</span><span class="mono" style="color: #736e64;">COMPARE-BENCH-01 · 2 of 6</span></a>
+      <a class="q" href="#"><span style="font-size: 14px; font-weight: 600;">Mixed to improper</span><span class="mono" style="color: #736e64;">MIXED-TO-IMP-02 · fix</span></a>
+      <a class="q" href="#"><span style="font-size: 14px; font-weight: 600;">School item · buses</span><span class="mono" style="color: #736e64;">Al Noor Academy</span></a>
+    </aside>
+
+    <section class="card" style="flex: 999 1 520px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+        <div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+          <span class="eyebrow">English source</span>
+          <p style="margin: 0; padding: 14px 16px; border-radius: 10px; background: #f6f4f0; font-size: 16px; line-height: 1.55;">Is 3/8 more or less than 1/2? Choose one.</p>
+          <span style="font-size: 13px; color: #54504a;">Options: More than 1/2 · Less than 1/2 · Equal to 1/2</span>
+        </div>
+        <div dir="rtl" lang="ar" class="ar" style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+          <label for="ar-text" class="eyebrow" style="font-family: 'IBM Plex Sans Arabic', sans-serif; letter-spacing: 0;">النص العربي</label>
+          <textarea id="ar-text" rows="2" class="ar" style="box-sizing: border-box; width: 100%; padding: 14px 16px; border-radius: 10px; border: 1px solid #c9d6e8; font-size: 17px; line-height: 1.7; resize: vertical;">هل 3/8 أكبر من 1/2 أم أصغر منه؟ اختر إجابة واحدة.</textarea>
+          <span style="font-size: 14px; color: #54504a;">الخيارات: أكبر من <span dir="ltr">1/2</span> · أصغر من <span dir="ltr">1/2</span> · يساوي <span dir="ltr">1/2</span></span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span class="eyebrow">Automatic checks</span>
+        <div class="chk"><span class="d" style="background: #1f7d77;"></span>Same numbers and fractions as the English source</div>
+        <div class="chk"><span class="d" style="background: #1f7d77;"></span>Fractions render left to right inside the Arabic sentence</div>
+        <div class="chk"><span class="d" style="background: #1f7d77;"></span>Glossary terms used consistently</div>
+        <div class="chk"><span class="d" style="background: #dc9a2c;"></span>Option order differs from English: check it is intended</div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px solid #eceae4;">
+        <a class="btn btn-ghost" href="#">Send back with a comment</a>
+        <a class="btn btn-primary" href="#" style="margin-left: auto;">Validate Arabic</a>
+      </div>
+    </section>
+
+    <aside class="card" style="flex: 1 1 240px; min-width: 0; padding: 20px; display: flex; flex-direction: column;">
+      <h2 style="margin: 0 0 8px; font-size: 15px; font-weight: 600;">Glossary</h2>
+      <div class="term"><span>fraction</span><span class="ar" lang="ar">كسر</span></div>
+      <div class="term"><span>numerator</span><span class="ar" lang="ar">بسط</span></div>
+      <div class="term"><span>denominator</span><span class="ar" lang="ar">مقام</span></div>
+      <div class="term"><span>equivalent</span><span class="ar" lang="ar">متكافئ</span></div>
+      <div class="term"><span>simplify</span><span class="ar" lang="ar">تبسيط</span></div>
+      <div class="term"><span>least common multiple</span><span class="ar" lang="ar">المضاعف المشترك الأصغر</span></div>
+    </aside>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. Arabic text to be reviewed by a native speaker.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Student session</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Sans+Arabic:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.cell{flex:1 1 0;border-right:2px solid #1a3f70}
+.cell:last-child{border-right:0}
+</style>
+</helmet>
+<div style="min-height: 720px; box-sizing: border-box; padding: 24px 40px 32px; background: #f6f4f0; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 24px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+    <span style="font-size: 18px; font-weight: 700; color: #1a3f70;">Atlas</span>
+    <div style="display: flex; align-items: center; gap: 6px;" aria-label="Question 7 of about 14">
+      <span style="width: 22px; height: 6px; border-radius: 3px; background: #2c63a8;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #2c63a8;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #2c63a8;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #2c63a8;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #2c63a8;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #2c63a8;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #7ba9d9;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #dcd8cf;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #dcd8cf;"></span><span style="width: 22px; height: 6px; border-radius: 3px; background: #dcd8cf;"></span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #dcd8cf; background: #ffffff; font: 600 15px 'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif; color: #3c3934; cursor: pointer;" lang="ar">عربي</button>
+      <button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #dcd8cf; background: #ffffff; font: 600 14px 'IBM Plex Sans', sans-serif; color: #3c3934; cursor: pointer;">Pause</button>
+    </div>
+  </header>
+
+  <main style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+    <section style="width: 100%; max-width: 760px; box-sizing: border-box; padding: 40px; border-radius: 20px; background: #ffffff; border: 1px solid #e3dfd6; display: flex; flex-direction: column; gap: 28px;">
+      <span style="font-size: 15px; font-weight: 600; color: #736e64;">Fill in the missing number</span>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 28px; font-size: 56px; font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr;">
+        <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.05;"><span>1</span><span style="width: 60px; height: 5px; background: #272521; border-radius: 3px;"></span><span>3</span></div>
+        <span>=</span>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; line-height: 1.05;">
+          <label for="answer" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Missing numerator</label>
+          <input id="answer" inputmode="numeric" value="2" style="width: 84px; height: 68px; box-sizing: border-box; border-radius: 12px; border: 3px solid #2c63a8; text-align: center; font: 600 48px 'IBM Plex Sans', sans-serif; color: #1a3f70; background: #eef4fb;">
+          <span style="width: 84px; height: 5px; background: #272521; border-radius: 3px;"></span>
+          <span>6</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; max-width: 520px; width: 100%; align-self: center;" aria-label="Two fraction bars of equal length">
+        <div style="display: flex; height: 40px; border: 2px solid #1a3f70; border-radius: 6px; overflow: hidden;">
+          <span class="cell" style="background: #7ba9d9;"></span><span class="cell"></span><span class="cell"></span>
+        </div>
+        <div style="display: flex; height: 40px; border: 2px solid #1a3f70; border-radius: 6px; overflow: hidden;">
+          <span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button type="button" style="min-height: 52px; padding: 0 32px; border-radius: 12px; border: 0; background: #1a3f70; color: #ffffff; font: 600 17px 'IBM Plex Sans', sans-serif; cursor: pointer;">Check</button>
+      </div>
+    </section>
+  </main>
+
+  <p style="margin: 0; text-align: center; font-size: 14px; color: #736e64;">No timer. Questions get easier or harder to fit you.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1024,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

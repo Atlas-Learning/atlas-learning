@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Classes and licences</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;color:#736e64;text-align:left;padding:10px 12px;border-bottom:1px solid #eceae4;white-space:nowrap}
+td{padding:12px;border-bottom:1px solid #eceae4;font-variant-numeric:tabular-nums;white-space:nowrap}
+.st{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.on{background:#edf8f7;color:#185f5b}.wait{background:#f6f4f0;color:#54504a}.inv{background:#eef4fb;color:#1a3f70}
+</style>
+</helmet>
+<div style="min-height: 860px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">Al Noor Academy · Administration</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">Classes and licences</h1>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+      <a class="btn btn-ghost" href="#">Invite teachers</a>
+      <a class="btn btn-primary" href="#">Add classes</a>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+    <section class="card" style="flex: 1 1 300px; min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 600;">Licence</h2>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Student seats</span><span style="font-weight: 600; font-variant-numeric: tabular-nums;">232 of 260</span></div>
+        <div style="height: 10px; border-radius: 5px; background: #eceae4; overflow: hidden;"><span style="display: block; width: 89%; height: 100%; background: #2c63a8;"></span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #54504a;">
+        <span><strong style="color: #272521;">Plan:</strong> pilot, Grades 3 to 5, fractions</span>
+        <span><strong style="color: #272521;">Pilot ends:</strong> 18 Dec 2026</span>
+        <span><strong style="color: #272521;">Curriculum:</strong> National Curriculum (England)</span>
+      </div>
+      <a href="Leadership.dc.html" style="font-size: 14px; font-weight: 600;">See the pilot evidence</a>
+    </section>
+
+    <section class="card" style="flex: 999 1 600px; min-width: 0; padding: 8px 12px; display: flex; flex-direction: column;">
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr><th>Class</th><th>Students</th><th>Roster</th><th>Status</th><th>Last check-in</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight: 600;">Grade 3A</td><td>27</td><td>Synced</td><td><span class="st on">Active</span></td><td>28 Oct</td></tr>
+            <tr><td style="font-weight: 600;">Grade 3B</td><td>26</td><td>Synced</td><td><span class="st on">Active</span></td><td>27 Oct</td></tr>
+            <tr><td style="font-weight: 600;">Grade 3C</td><td>25</td><td>Synced</td><td><span class="st on">Active</span></td><td>29 Oct</td></tr>
+            <tr><td style="font-weight: 600;">Grade 4A</td><td>26</td><td>Synced</td><td><span class="st on">Active</span></td><td>29 Oct</td></tr>
+            <tr><td style="font-weight: 600;">Grade 4B</td><td>26</td><td>Synced</td><td><span class="st on">Active</span></td><td>29 Oct</td></tr>
+            <tr><td style="font-weight: 600;">Grade 4C</td><td>26</td><td>Synced</td><td><span class="st on">Active</span></td><td>28 Oct</td></tr>
+            <tr><td style="font-weight: 600;">Grade 5A</td><td>25</td><td>Synced</td><td><span class="st on">Active</span></td><td>26 Oct</td></tr>
+            <tr><td style="font-weight: 600;">Grade 5B</td><td>26</td><td>Synced</td><td><span class="st inv">Teacher invited</span></td><td style="color: #736e64;">None yet</td></tr>
+            <tr><td style="font-weight: 600;">Grade 5C</td><td>25</td><td>Synced</td><td><span class="st wait">Not started</span></td><td style="color: #736e64;">None yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; padding: 12px; font-size: 13px; color: #736e64;">Status shows set-up and use only. Results stay with teachers and appear here by grade, never by class teacher.</p>
+    </section>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. School and figures are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

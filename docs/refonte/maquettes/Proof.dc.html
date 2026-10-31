@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — Proof card</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;font-size:14px;font-weight:600}
+</style>
+</helmet>
+<div style="min-height: 860px; box-sizing: border-box; padding: 32px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 24px;">
+
+  <a href="Main.dc.html" style="font-size: 14px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    This week</a>
+
+  <header style="display: flex; flex-direction: column; gap: 10px;">
+    <span class="eyebrow">Proof · Simplify a fraction to lowest terms</span>
+    <h1 style="margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em;">4 of 6 students unlocked it after your lesson</h1>
+    <p style="margin: 0; font-size: 15px; color: #54504a;">Lesson “Greatest common divisor with factor lists” · taught 27 Oct · re-checked 29 Oct</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px;">
+      <span class="chip" style="background: #edf8f7; color: #185f5b;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #1f7d77;"></span>4 unlocked</span>
+      <span class="chip" style="background: #fdf6e9; color: #7c4d10;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #dc9a2c;"></span>1 unchanged</span>
+      <span class="chip" style="background: #f6f4f0; color: #54504a;"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #9a9489; box-sizing: border-box;"></span>1 not re-checked (absent)</span>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+
+    <section class="card" aria-label="Before and after, per student" style="flex: 999 1 560px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: baseline;">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Before the lesson and after the re-check</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #54504a;">
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #9a9489; box-sizing: border-box; background: #ffffff;"></span>Before</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #1f7d77;"></span>After</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 8px; border-radius: 4px; background: #cfeceb;"></span>Likely range</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 16px; padding-left: 128px; font-size: 12px; font-weight: 600; color: #736e64;">
+        <span style="flex: 40 1 0;">Not yet</span>
+        <span style="flex: 30 1 0;">Next step</span>
+        <span style="flex: 30 1 0; color: #185f5b;">Mastered</span>
+      </div>
+
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+        <div style="display: flex; align-items: center; gap: 16px; min-height: 40px;">
+          <span style="width: 112px; flex: none; font-size: 14px; font-weight: 600;">{{r.name}}</span>
+          <div style="position: relative; flex: 1 1 auto; height: 28px; border-radius: 6px; background: linear-gradient(90deg, #f6f4f0 0 40%, #fbf3e3 40% 70%, #edf8f7 70% 100%);">
+            <span style="position: absolute; left: 70%; top: -4px; bottom: -4px; border-left: 1.5px dashed #7fcfca;"></span>
+            <span style="{{r.range}}"></span>
+            <span style="{{r.link}}"></span>
+            <span style="{{r.before}}"></span>
+            <span style="{{r.after}}"></span>
+          </div>
+          <span style="width: 140px; flex: none; font-size: 13px; color: #54504a;">{{r.label}}</span>
+        </div>
+      </sc-for>
+
+      <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #736e64;">Positions are mastery estimates with their likely range. One re-check can be wrong: the next check-in confirms or corrects each result.</p>
+    </section>
+
+    <aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+      <section class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <h2 style="margin: 0; font-size: 15px; font-weight: 600;">What Atlas suggests next</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: #54504a;"><strong style="color: #272521;">Noor J.</strong> is unchanged. Her errors point to finding factors, one step earlier than GCD. She joins this week's factors check.</p>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: #54504a;"><strong style="color: #272521;">Ali H.</strong> was absent. He is added to the next re-check.</p>
+      </section>
+      <section class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <h2 style="margin: 0; font-size: 15px; font-weight: 600;">Share this result</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: #54504a;">Your Head of Maths sees the cause and the effect, not a ranking of teachers.</p>
+        <a class="btn btn-primary" href="#">Share with Head of Maths</a>
+        <a class="btn btn-ghost" href="#">Add to grade evidence</a>
+      </section>
+    </aside>
+  </div>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. All students are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var data = [
+      { name: 'Mariam N.', b: 45, a: 82, lo: 75, hi: 89, s: 'u' },
+      { name: 'Rohan S.', b: 38, a: 77, lo: 72, hi: 84, s: 'u' },
+      { name: 'Zayed A.', b: 50, a: 85, lo: 78, hi: 92, s: 'u' },
+      { name: 'Sara B.', b: 42, a: 79, lo: 73, hi: 86, s: 'u' },
+      { name: 'Noor J.', b: 40, a: 46, lo: 38, hi: 55, s: 'c' },
+      { name: 'Ali H.', b: 44, a: null, lo: null, hi: null, s: 'x' }
+    ];
+    var dot = 'position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;box-sizing:border-box;';
+    var rows = data.map(function (d) {
+      var before = dot + 'left:' + d.b + '%;background:#ffffff;border:2px solid #9a9489;';
+      if (d.s === 'x') {
+        return { name: d.name, label: 'Not re-checked', before: before, after: 'display:none', link: 'display:none', range: 'display:none' };
+      }
+      var col = d.s === 'u' ? '#1f7d77' : '#dc9a2c';
+      var tint = d.s === 'u' ? '#cfeceb' : '#f9e6c2';
+      return {
+        name: d.name,
+        label: d.s === 'u' ? 'Unlocked' : 'Unchanged',
+        before: before,
+        after: dot + 'left:' + d.a + '%;background:' + col + ';border:2px solid #ffffff;',
+        link: 'position:absolute;top:50%;height:2px;margin-top:-1px;left:' + d.b + '%;width:' + (d.a - d.b) + '%;background:' + col + ';opacity:.5;',
+        range: 'position:absolute;top:50%;height:12px;margin-top:-6px;border-radius:6px;left:' + d.lo + '%;width:' + (d.hi - d.lo) + '%;background:' + tint + ';'
+      };
+    });
+    return { rows: rows };
+  }
+}
+</script>
+</body>
+</html>

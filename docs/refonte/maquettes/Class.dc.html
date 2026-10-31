@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atlas — My class</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1a3f70}a:hover{color:#0f2238}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#736e64}
+.card{background:#ffffff;border:1px solid #e3dfd6;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;font:600 14px/1 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;border:0}
+.btn-primary{background:#1a3f70;color:#ffffff}
+.btn-ghost{background:#ffffff;color:#1a3f70;border:1px solid #c9d6e8}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;color:#736e64;text-align:left;padding:10px;border-bottom:1px solid #eceae4;white-space:nowrap}
+td{padding:10px;border-bottom:1px solid #eceae4;vertical-align:middle;white-space:nowrap}
+.av{width:30px;height:30px;border-radius:50%;background:#eef4fb;color:#1a3f70;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.grp{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#fdf6e9;color:#7c4d10}
+.sk{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:600;color:#736e64;height:120px;text-align:left}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; padding: 28px 40px 40px; background: #fbfaf8; color: #272521; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="eyebrow">My classes · Grade 4B · 26 students</span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600;">Fractions unit, skill by skill</h1>
+      <p style="margin: 0; font-size: 14px; color: #54504a;">Last check-in 29 Oct · 24 of 26 measured · roster synced from the school directory</p>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+      <a class="btn btn-ghost" href="#">Switch class</a>
+      <a class="btn btn-primary" href="Checkin.dc.html">Launch a check-in</a>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #54504a;">
+    <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: #1f7d77;"></span>Mastered</span>
+    <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: #dc9a2c;"></span>Next step</span>
+    <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: repeating-linear-gradient(135deg,#dc9a2c 0 3px,#fdf6e9 3px 6px);"></span>Estimated</span>
+    <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: #e3dfd6;"></span>Not measured</span>
+  </div>
+
+  <section class="card" style="padding: 8px 12px; overflow-x: auto;">
+    <table>
+      <thead>
+        <tr>
+          <th style="vertical-align: bottom;">Student</th>
+          <th><span class="sk">Equivalence, models</span></th>
+          <th><span class="sk">Equivalence, multiply</span></th>
+          <th><span class="sk">Simplify</span></th>
+          <th><span class="sk">LCM</span></th>
+          <th><span class="sk">Compare, unlike</span></th>
+          <th><span class="sk">Add, unlike</span></th>
+          <th style="vertical-align: bottom;">This week</th>
+          <th style="vertical-align: bottom;">Unlocked this term</th>
+        </tr>
+      </thead>
+      <tbody>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+          <tr>
+            <td><a href="Student-profile.dc.html" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: #272521; font-weight: 600;"><span class="av">{{r.ini}}</span>{{r.name}}</a></td>
+            <td><span style="{{r.s0}}"></span></td>
+            <td><span style="{{r.s1}}"></span></td>
+            <td><span style="{{r.s2}}"></span></td>
+            <td><span style="{{r.s3}}"></span></td>
+            <td><span style="{{r.s4}}"></span></td>
+            <td><span style="{{r.s5}}"></span></td>
+            <td><span style="{{r.grpStyle}}">{{r.grp}}</span></td>
+            <td style="font-variant-numeric: tabular-nums; color: #54504a;">{{r.unl}}</td>
+          </tr>
+        </sc-for>
+      </tbody>
+    </table>
+    <div style="padding: 12px 10px; font-size: 14px;"><a href="#" style="font-weight: 600;">Show all 26 students</a></div>
+  </section>
+
+  <footer style="font-size: 12px; color: #9a9489;">Demo data. All students are fictitious.</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var base = 'display:block;width:22px;height:22px;border-radius:5px;';
+    var map = {
+      M: base + 'background:#1f7d77;',
+      N: base + 'background:#dc9a2c;',
+      E: base + 'background:repeating-linear-gradient(135deg,#dc9a2c 0 3px,#fdf6e9 3px 6px);',
+      X: base + 'background:#e3dfd6;'
+    };
+    var pill = 'display:inline-flex;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;';
+    var data = [
+      ['OK', 'Omar K.', 'MNMENN', 'Group A', 2],
+      ['LM', 'Layla M.', 'MNMMNN', 'Group A', 3],
+      ['MN', 'Mariam N.', 'MMMNNN', 'Group B', 4],
+      ['AR', 'Aarav R.', 'NNMMXN', 'Group A', 1],
+      ['RS', 'Rohan S.', 'MMMNNX', 'Group B', 3],
+      ['SB', 'Sara B.', 'MMMENN', 'Group B', 4],
+      ['ZA', 'Zayed A.', 'MMMMMN', '', 5],
+      ['HS', 'Hessa S.', 'MNMMNN', 'Group A', 2],
+      ['DT', 'Daniel T.', 'MNNMXX', 'Group A', 1],
+      ['NJ', 'Noor J.', 'MMNENX', 'Group B', 2]
+    ];
+    var rows = data.map(function (d) {
+      var r = { ini: d[0], name: d[1], grp: d[3] || 'No group', unl: d[4] + ' skills' };
+      for (var i = 0; i < 6; i++) { r['s' + i] = map[d[2].charAt(i)]; }
+      r.grpStyle = d[3] ? pill + 'background:#fdf6e9;color:#7c4d10;' : pill + 'background:#edf8f7;color:#185f5b;';
+      return r;
+    });
+    return { rows: rows };
+  }
+}
+</script>
+</body>
+</html>

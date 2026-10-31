@@ -7,7 +7,7 @@ Base : enum `Role` dans `src/models/base.py`, portée via `Membership` (`organiz
 | Persona | Rôle | Portée | Connexion | Statut |
 | --- | --- | --- | --- | --- |
 | Super admin | `super_admin` | Global | Lien magique | Existe |
-| Relecteur de contenu | `content_reviewer` | Global, banque d'items | Lien magique | Existe |
+| Relecteur de contenu | `content_reviewer` | Global, banque d'items | Lien magique (`/admin/request-link`) ou SSO | Créé (`0024`), onboarding `scripts/onboard_staff.py` |
 | Linguiste | `linguist` | Global, arabe de la banque | Lien magique | Existe |
 | Admin IT de l'école | `it_admin` | Organisation ou école | SSO OIDC | Existe |
 | Direction | `ped_admin` | École | SSO | Existe |

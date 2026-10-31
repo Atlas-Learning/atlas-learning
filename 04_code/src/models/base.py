@@ -152,6 +152,7 @@ class Role(str, enum.Enum):
     # Refonte, phase A (docs/refonte/02) :
     DEPT_LEAD = "dept_lead"       # coordinateur maths : UNE école + une liste de niveaux (dept_lead_scope)
     GROUP_ADMIN = "group_admin"   # admin de groupe scolaire : organisation entière (toutes ses écoles), lecture
+    CONTENT_REVIEWER = "content_reviewer"  # staff Atlas GLOBAL : relit la banque d'items (file de revue, pas tenant-scopé)
 
 
 # --- Enums curriculum (Lot B, B2/B3 — DataModel §7 amendé D-B4) ---

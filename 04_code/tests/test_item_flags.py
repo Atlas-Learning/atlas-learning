@@ -74,8 +74,9 @@ def _api():
     active = _item(s, comp)
     pending = _item(s, comp, status=ItemStatus.AI_GENERATED)
     teacher, lead, parent, su, ling = (AppUser(email=f"{n}@x.io") for n in ("t", "lead", "p", "ops", "ling"))
-    stud_user = AppUser(email="s@x.io")
-    s.add_all([teacher, lead, parent, su, ling, stud_user]); s.flush()
+    stud_user = AppUser(email="s@x.io"); rev = AppUser(email="rev@x.io")
+    s.add_all([teacher, lead, parent, su, ling, stud_user, rev]); s.flush()
+    s.add(Membership(user_id=rev.id, role=Role.CONTENT_REVIEWER))
     m_lead = Membership(user_id=lead.id, role=Role.DEPT_LEAD, school_id=school.id); s.add(m_lead); s.flush()
     s.add_all([
         Membership(user_id=teacher.id, role=Role.TEACHER, school_id=school.id),
@@ -90,7 +91,7 @@ def _api():
     s.commit()
     app.dependency_overrides[get_db] = lambda: s
     ids = dict(school=school.id, active=active.id, pending=pending.id, teacher=teacher.id, lead=lead.id,
-               parent=parent.id, su=su.id, ling=ling.id, student=stud_user.id)
+               parent=parent.id, su=su.id, ling=ling.id, student=stud_user.id, rev=rev.id)
     return TestClient(app), ids, s
 
 
@@ -189,7 +190,7 @@ def test_flag_rbac_and_validation():
         url = f"/items/{ids['active']}/flags"
         for who in ("parent", "student"):
             assert client.post(url, json={"reason": "other"}, headers=_auth(ids[who])).status_code == 403
-        for who in ("lead", "ling", "su"):
+        for who in ("lead", "ling", "su", "rev"):
             assert client.post(url, json={"reason": "arabic"}, headers=_auth(ids[who])).status_code == 200
         assert client.post(url, json={"reason": "typo"}, headers=_auth(ids["teacher"])).status_code == 400
         assert client.post(f"/items/{uuid.uuid4()}/flags", json={"reason": "other"},
@@ -211,8 +212,11 @@ def test_resolve_accept_quarantines_active_item_only():
                                 headers=_auth(ids["teacher"])).json()["id"]
         assert client.post(f"/items/flags/{f_active}/resolve", json={"accept": True},
                            headers=_auth(ids["teacher"])).status_code == 403
-        r = client.post(f"/items/flags/{f_active}/resolve", json={"accept": True}, headers=_auth(ids["su"]))
+        # le relecteur de contenu tient la file : il voit et tranche
+        assert client.get("/items/flags", headers=_auth(ids["rev"])).status_code == 200
+        r = client.post(f"/items/flags/{f_active}/resolve", json={"accept": True}, headers=_auth(ids["rev"]))
         assert r.status_code == 200 and r.json()["status"] == "accepted" and r.json()["item"]["status"] == "quarantined"
+        assert r.json()["resolved_by"] == str(ids["rev"])
         r = client.post(f"/items/flags/{f_pending}/resolve", json={"accept": True}, headers=_auth(ids["su"]))
         assert r.json()["item"]["status"] == "ai_generated"                # aucun raccourci
         assert client.post(f"/items/flags/{f_active}/resolve", json={"accept": False},

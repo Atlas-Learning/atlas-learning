@@ -44,6 +44,7 @@ from src.api.views_service import (
 from src.audit import log_action
 from src.db import active, make_engine
 from src.items import review
+from src.items import templates as item_templates
 from src.items.arabic import (
     ALLAM_MODEL,
     TranslationError,
@@ -741,7 +742,7 @@ def _magic_link_role(ctx: UserContext) -> Optional[Role]:
     """Rôle qui ouvre droit au lien magique (super_admin prioritaire pour le wording), ou None."""
     if Role.SUPER_ADMIN in ctx.roles:
         return Role.SUPER_ADMIN
-    for r in (Role.GROUP_ADMIN, Role.DEPT_LEAD):
+    for r in (Role.CONTENT_REVIEWER, Role.GROUP_ADMIN, Role.DEPT_LEAD):
         if r in ctx.roles and r in grants.MAGIC_LINK_ROLES:
             return r
     return None
@@ -1696,7 +1697,7 @@ def flag_item_ep(item_id: uuid.UUID, body: ItemFlagIn, ctx: UserContext = Depend
 @app.get("/items/flags")
 def list_item_flags(status: str = "open", limit: int = 200,
                     ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
-    """File des signalements (super admin ; relecteur au ticket A4). `status=all` pour tout."""
+    """File des signalements (relecteur de contenu, super admin). `status=all` pour tout."""
     if not can_review_items(ctx):
         raise HTTPException(status_code=403, detail="rôle relecteur requis")
     st: Optional[ItemFlagStatus]
@@ -1732,6 +1733,58 @@ def resolve_item_flag(flag_id: uuid.UUID, body: ItemFlagResolveIn,
                         "item_status": it.status.value if it else None})
     s.commit()
     return _flag_payload(fl, it)
+
+
+# ---------- gabarits (refonte A3) : état, quarantaine en masse, régénération ----------
+#
+# Les gabarits vivent dans le code ; l'UI (file de revue, A4) déclenche quarantaine et suivi.
+# La régénération suit une correction du code déployée : elle est exposée pour le relecteur,
+# et reste idempotente (rendu inchangé → rien).
+
+class TemplateActionIn(BaseModel):
+    reason: Optional[str] = None
+
+
+@app.get("/ops/templates/{key}")
+def ops_template_report(key: str, ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    try:
+        return item_templates.template_report(s, key)
+    except item_templates.TemplateError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/ops/templates/{key}/quarantine")
+def ops_template_quarantine(key: str, body: Optional[TemplateActionIn] = None,
+                            ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    try:
+        done = item_templates.quarantine_template(s, key, by=str(ctx.user_id),
+                                                  reason=(body.reason if body else "") or "")
+    except item_templates.TemplateError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    log_action(s, action="item.template_quarantine", user_id=ctx.user_id,
+               details={"key": key, "n": len(done), "reason": (body.reason if body else None)})
+    s.commit()
+    return {"key": key, "quarantined": [str(it.id) for it in done]}
+
+
+@app.post("/ops/templates/{key}/regenerate")
+def ops_template_regenerate(key: str, dry_run: bool = False,
+                            ctx: UserContext = Depends(get_context), s: Session = Depends(get_db)):
+    if not can_review_items(ctx):
+        raise HTTPException(status_code=403, detail="rôle relecteur requis")
+    try:
+        rep = item_templates.regenerate_template(s, key, by=str(ctx.user_id),
+                                                 resolver_id=ctx.user_id, dry_run=dry_run)
+    except item_templates.TemplateError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    if not dry_run:
+        log_action(s, action="item.template_regenerate", user_id=ctx.user_id, details=rep.as_dict())
+        s.commit()
+    return {**rep.as_dict(), "dry_run": dry_run}
 
 
 @app.get("/schools/{school_id}/overview")

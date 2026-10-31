@@ -21,6 +21,7 @@ Une refonte est en cours. Sa spec complète est dans `docs/refonte/` : commence 
 
 1. **Le curriculum n'entre jamais dans `src/engine/`.** Le moteur ne connaît que le graphe de compétences. Les curriculums sont une couche d'affichage (`src/models/curriculum.py`).
 2. **Aucun appel LLM sur des données d'élève au runtime.** La génération d'items est déterministe (`src/items/deterministic.py`). Le tuteur (`src/restitution/tutor.py`) reste déterministe.
+   Les gabarits vivent dans le code : une faute se corrige dans le générateur, puis `scripts/regenerate_template.py` crée les nouvelles versions (`src/items/templates.py`). Jamais d'édition d'item en base pour contourner le gabarit.
 3. **Mesuré et estimé sont toujours distingués.** Toute réponse d'API qui expose une maîtrise expose aussi `measured` et la confiance. L'UI hachure l'estimé.
 4. **Pas de classement d'enseignants.** Aucun endpoint accessible à `ped_admin` ou `group_admin` ne renvoie de résultat agrégé par enseignant. L'usage (adoption) peut être agrégé par classe ou par école, jamais les résultats.
 5. **Mode projection anonyme.** Les endpoints de progression d'un check-in en cours ne renvoient ni nom, ni identifiant d'élève.
@@ -39,6 +40,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest
 make test          # suite complète (doit rester verte) — alias de .venv/bin/python -m pytest -q
 make migrate       # alembic upgrade head (SQLite par défaut, DATABASE_URL pour Postgres)
 .venv/bin/python scripts/grant_role.py --help   # attribuer dept_lead / group_admin (docs/refonte/06)
+.venv/bin/python scripts/onboard_staff.py --role content_reviewer --email …   # staff Atlas global
+.venv/bin/python scripts/backfill_template_keys.py --dry-run   # Q15 : clés de gabarit sans perte
+.venv/bin/python scripts/regenerate_template.py --key <code|code#rang> [--dry-run]   # A3
 cd web && npm install && npm run dev
 ```
 

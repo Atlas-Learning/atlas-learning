@@ -420,6 +420,33 @@ def test_0023_item_versions_et_item_flag_reversibles():
         os.unlink(tmp.name)
 
 
+def test_0024_role_content_reviewer_reversible():
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False); tmp.close()
+    url = f"sqlite:///{tmp.name}"
+    old_env = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    try:
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, "head")
+        engine = sa.create_engine(url)
+        with engine.begin() as conn:
+            uid = _hex(uuid.uuid4())
+            conn.execute(sa.text("INSERT INTO app_user (id, email, is_active) VALUES (:id, 'rev@atlas.io', 1)"), {"id": uid})
+            conn.execute(sa.text("INSERT INTO membership (id, user_id, role) VALUES (:id, :u, 'content_reviewer')"),
+                         {"id": _hex(uuid.uuid4()), "u": uid})
+        with engine.connect() as conn:
+            assert conn.execute(sa.text("SELECT role FROM membership")).scalar_one() == "content_reviewer"
+        command.downgrade(cfg, "0023_item_versions_flags")
+        command.upgrade(cfg, "head")
+        engine.dispose()
+    finally:
+        if old_env is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = old_env
+        os.unlink(tmp.name)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

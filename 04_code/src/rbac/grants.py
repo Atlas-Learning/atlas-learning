@@ -47,7 +47,9 @@ GRANTABLE_ROLES: FrozenSet[Role] = frozenset({Role.DEPT_LEAD, Role.GROUP_ADMIN})
 #: Rôles qui peuvent ouvrir une session par lien magique (/admin/request-link) quand aucun IdP
 #: ne les porte. Le super admin (équipe éditeur) l'avait déjà ; les deux rôles de la refonte
 #: s'y ajoutent pour les écoles et groupes « sans SSO ».
-MAGIC_LINK_ROLES: FrozenSet[Role] = frozenset({Role.SUPER_ADMIN, Role.GROUP_ADMIN, Role.DEPT_LEAD})
+MAGIC_LINK_ROLES: FrozenSet[Role] = frozenset({
+    Role.SUPER_ADMIN, Role.CONTENT_REVIEWER, Role.GROUP_ADMIN, Role.DEPT_LEAD,
+})
 
 GRADE_MIN, GRADE_MAX = 0, 13   # 0 = KG
 

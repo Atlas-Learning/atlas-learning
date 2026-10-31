@@ -66,13 +66,13 @@ def can_review_arabic(ctx: UserContext) -> bool:
 def can_flag_item(ctx: UserContext) -> bool:
     """Signaler un item de la banque (refonte A2) : enseignant, coordinateur, linguiste, super
     admin — matrice de docs/refonte/02. (content_reviewer : ticket A4.)"""
-    return ctx.has(Role.TEACHER, Role.DEPT_LEAD, Role.LINGUIST, Role.SUPER_ADMIN)
+    return ctx.has(Role.TEACHER, Role.DEPT_LEAD, Role.LINGUIST, Role.CONTENT_REVIEWER, Role.SUPER_ADMIN)
 
 
 def can_review_items(ctx: UserContext) -> bool:
-    """File de revue de la banque (signalements, transitions) : super admin ; le relecteur de
-    contenu (`content_reviewer`) s'y ajoute au ticket A4."""
-    return is_super(ctx)
+    """File de revue de la banque (signalements, gabarits, transitions) : relecteur de contenu
+    (staff Atlas global, non tenant-scopé) ou super admin."""
+    return ctx.has(Role.CONTENT_REVIEWER, Role.SUPER_ADMIN)
 
 
 def can_manage_school(ctx: UserContext, school_id) -> bool:
